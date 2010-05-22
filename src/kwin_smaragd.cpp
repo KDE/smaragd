@@ -91,7 +91,7 @@ static load_settings_proc load_settings;
 
 gboolean load_engine(gchar *engine, window_settings *ws)
 {
-    if (!strcmp(engine, "legacy")) {
+    if (!engine || !strcmp(engine, "legacy")) {
         init_engine = legacy_init_engine;
         draw_frame = legacy_engine_draw_frame;
         load_settings = legacy_load_engine_settings;
@@ -209,15 +209,17 @@ int gdk_pixbuf_get_height(GdkPixbuf *pixbuf)
     return pixbuf->image.height();
 }
 
-GdkPixbuf *gdk_pixbuf_new(int /*colorspace*/, gboolean /*unknown1*/, int /*unknown2*/, int w, int h)
+GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits_per_sample, int w, int h)
 {
+    Q_ASSERT(colorspace == GDK_COLORSPACE_RGB);
+    Q_ASSERT(bits_per_sample == 8);
+
     _GdkPixbuf *pixbuf = new _GdkPixbuf;
-    pixbuf->image = QImage(w, h, QImage::Format_ARGB32_Premultiplied);
-    pixbuf->image.fill(qRgba(0, 0, 0, 0));
+    pixbuf->image = QImage(w, h, has_alpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_RGB32);
     return pixbuf;
 }
 
-GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, void */*unknown*/)
+GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, GError **/*error*/)
 {
     _GdkPixbuf *pixbuf = new _GdkPixbuf;
     pixbuf->image = QImage(QString::fromAscii(file));
@@ -231,9 +233,13 @@ GdkPixbuf *gdk_pixbuf_new_subpixbuf(GdkPixbuf *source, int x, int y, int w, int 
     return pixbuf;
 }
 
-void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, int h, double source_x, double source_y, double scale_x, double scale_y, int /*interp*/)
+void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, int h, double source_x, double source_y, double scale_x, double scale_y, int interp)
 {
     QPainter p(&dest->image);
+    if (interp == GDK_INTERP_BILINEAR) {
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    }
+    p.setCompositionMode(QPainter::CompositionMode_Source);
     p.drawImage(QRect(x, y, w, h), source->image, QRect(qRound(source_x), qRound(source_y), qRound(w / scale_x), qRound(h / scale_y)));
     p.end();
 }
@@ -381,6 +387,102 @@ int Decoration::buttonGlyph(ButtonType type) const
     return y;
 }
 
+static Qt::Alignment parseTitleAlignment(char *p)
+{
+    char c;
+
+    while ((c = *p++) && c != ':') {
+        if (c == 'T') {
+            return Qt::AlignLeft;
+        }
+    }
+    while ((c = *p++) && c != ':') {
+        if (c == 'T') {
+            return Qt::AlignHCenter;
+        }
+    }
+    return Qt::AlignRight;
+}
+
+static QString parseButtonLayout(char *p)
+{
+    QString buttons;
+    char c;
+
+    while ((c = *p++)) {
+        switch (c) {
+        case 'H': // B_HELP
+            buttons += 'H';
+            break;
+        case 'M':
+        case 'I': // B_MENU
+            buttons += 'M';
+            break;
+        case 'N': // B_MINIMIZE
+            buttons += 'I';
+            break;
+        case 'R':
+        case 'X': // B_MAXIMIZE
+            buttons += 'A';
+            break;
+        case 'C': // B_CLOSE
+            buttons += 'X';
+            break;
+        case 'U':
+        case 'A': // B_ABOVE
+            buttons += 'F';
+            break;
+        case 'D': // B_BELOW
+            buttons += 'B';
+            break;
+        case 'S': // B_SHADE
+            buttons += 'L';
+            break;
+        case 'Y': // B_STICK
+            buttons += 'S';
+            break;
+        case '(': {
+            int s = 0;
+            do {
+                c = *p++;
+                if (c >= '0' && c <= '9') {
+                    s = s * 10 + c - '0';
+                }
+            } while (c != ')' && c != 0);
+            if (s < 100) {
+                while (--s > 0) {
+                    buttons += '_';
+                }
+            }
+        }
+        default:
+            break;
+        }
+    }
+    return buttons;
+}
+
+QString Decoration::defaultButtonsLeft() const
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    if (!ws->tobj_layout) {
+        return KDecorationOptions::defaultTitleButtonsLeft();
+    }
+    return parseButtonLayout(ws->tobj_layout);
+}
+
+QString Decoration::defaultButtonsRight() const
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    if (!ws->tobj_layout) {
+        return KDecorationOptions::defaultTitleButtonsRight();
+    }
+    char *p = ws->tobj_layout;
+    while (*p && *p++ != ':') { }
+    while (*p && *p++ != ':') { }
+    return parseButtonLayout(p);
+}
+
 int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCommonDecorationButton *button) const
 {
     window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
@@ -408,6 +510,9 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
         return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
     case LM_ButtonHeight:
     case LM_ButtonWidth: {
+        if (button->type() == MenuButton) {
+            return 16;
+        }
         GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(button->type()) * S_COUNT];
         if (pixbuf) {
             if (lm == LM_ButtonWidth) {
@@ -520,6 +625,9 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     painter.setFont(options()->font(active));
     Qt::Alignment alignment = Qt::AlignHCenter;
+    if (ws->tobj_layout) {
+        alignment = parseTitleAlignment(ws->tobj_layout);
+    }
     QRect labelRect = titleRect().adjusted(0, 0, 1, 1);
 
     QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
@@ -576,6 +684,11 @@ void DecorationButton::paintEvent(QPaintEvent */* event */)
     }
     if (!decoration()->isActive()) {
         x += 3;
+    }
+
+    if (type() == MenuButton) {
+        painter.drawPixmap(0, 0, icon().pixmap(rect().size()));
+        return;
     }
 
     int y = deco->buttonGlyph(type());

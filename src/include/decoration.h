@@ -48,10 +48,10 @@ typedef enum {
 
 #define GDK_INTERP_BILINEAR (2)
 
-extern GdkPixbuf *gdk_pixbuf_new(int /*colorspace*/, gboolean /*unknown1*/, int /*unknown2*/, int w, int h);
-extern GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, void */*unknown*/);
+extern GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits_per_sample, int w, int h);
+extern GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, GError **error);
 extern GdkPixbuf *gdk_pixbuf_new_subpixbuf(GdkPixbuf *source, int x, int y, int w, int h);
-extern void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, int h, double source_x, double source_y, double scale_x, double scale_y, int /*interp*/);
+extern void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, int h, double source_x, double source_y, double scale_x, double scale_y, int interp);
 
 extern void gdk_drawable_get_size(GdkPixmap *pixmap, int *width, int *height);
 
