@@ -1,0 +1,456 @@
+/*
+ * kwin_smaragd.cpp - Emerald window decoration for KDE
+ *
+ * Copyright (c) 2010 Christoph Feck <christoph@maxiom.de>
+ * Copyright (c) 2006 Novell, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#include "kwin_smaragd.h"
+
+#include <KDE/KConfig>
+#include <KDE/KConfigGroup>
+#include <KDE/KLocale>
+#include <kdeversion.h>
+
+#include <QtGui/QStyleOption>
+#include <QtGui/QStylePainter>
+
+#include <cairo.h>
+
+extern "C"
+{
+
+#include <engine.h>
+
+void pango_layout_get_pixel_size(PangoLayout *layout, int *pwidth, int *pheight)
+{
+    *pwidth = layout->bounding_width;
+    *pheight = layout->bounding_height;
+}
+
+void gdk_color_parse(gchar *s, GdkColor *c)
+{
+    QString string = QString::fromLocal8Bit(s);
+    QColor color(string);
+    c->red = qRound(color.redF() * 65535);
+    c->green = qRound(color.greenF() * 65535);
+    c->blue = qRound(color.blueF() * 65535);
+}
+
+void gdk_drawable_get_size(GdkPixmap *pixmap, int *width, int *height)
+{
+    *width = pixmap->width;
+    *height = pixmap->height;
+}
+
+extern window_settings *create_settings();
+extern void update_settings(window_settings *ws);
+
+extern void legacy_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void line_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void oxygen_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void pixmap_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void truglass_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void vrunner_load_engine_settings(GKeyFile *f, window_settings *ws);
+extern void zootreeves_load_engine_settings(GKeyFile *f, window_settings *ws);
+
+extern void legacy_init_engine(window_settings *ws);
+extern void line_init_engine(window_settings *ws);
+extern void oxygen_init_engine(window_settings *ws);
+extern void pixmap_init_engine(window_settings *ws);
+extern void truglass_init_engine(window_settings *ws);
+extern void vrunner_init_engine(window_settings *ws);
+extern void zootreeves_init_engine(window_settings *ws);
+
+extern void legacy_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void line_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void oxygen_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void pixmap_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void truglass_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void vrunner_engine_draw_frame(decor_t * d, cairo_t * cr);
+extern void zootreeves_engine_draw_frame(decor_t * d, cairo_t * cr);
+
+static init_engine_proc init_engine;
+static draw_frame_proc draw_frame;
+static load_settings_proc load_settings;
+
+gboolean load_engine(gchar *engine, window_settings *ws)
+{
+    if (!strcmp(engine, "legacy")) {
+        init_engine = legacy_init_engine;
+        draw_frame = legacy_engine_draw_frame;
+        load_settings = legacy_load_engine_settings;
+    } else if (!strcmp(engine, "line")) {
+        init_engine = line_init_engine;
+        draw_frame = line_engine_draw_frame;
+        load_settings = line_load_engine_settings;
+    } else if (!strcmp(engine, "oxygen")) {
+        init_engine = oxygen_init_engine;
+        draw_frame = oxygen_engine_draw_frame;
+        load_settings = oxygen_load_engine_settings;
+    } else if (!strcmp(engine, "pixmap")) {
+        init_engine = pixmap_init_engine;
+        draw_frame = pixmap_engine_draw_frame;
+        load_settings = pixmap_load_engine_settings;
+    } else if (!strcmp(engine, "truglass")) {
+        init_engine = truglass_init_engine;
+        draw_frame = truglass_engine_draw_frame;
+        load_settings = truglass_load_engine_settings;
+    } else if (!strcmp(engine, "vrunner")) {
+        init_engine = vrunner_init_engine;
+        draw_frame = vrunner_engine_draw_frame;
+        load_settings = vrunner_load_engine_settings;
+    } else if (!strcmp(engine, "zootreeves")) {
+        init_engine = zootreeves_init_engine;
+        draw_frame = zootreeves_engine_draw_frame;
+        load_settings = zootreeves_load_engine_settings;
+    } else {
+        return false;
+    }
+    init_engine(ws);
+    return true;
+}
+
+
+void load_engine_settings(GKeyFile *f, window_settings *ws)
+{
+    load_settings(f, ws);
+}
+
+#define CORNER_REDUCTION 3
+
+int update_shadow(frame_settings * fs)
+{
+    int size = 0;
+
+    window_settings *ws = fs->ws;
+    if (ws->shadow_radius <= 0.0 && ws->shadow_offset_x == 0 &&
+        ws->shadow_offset_y == 0)
+        size = 0;
+
+    size = size / 2;
+
+    ws->left_space = ws->win_extents.left + size - ws->shadow_offset_x;
+    ws->right_space = ws->win_extents.right + size + ws->shadow_offset_x;
+    ws->top_space = ws->win_extents.top + size - ws->shadow_offset_y;
+    ws->bottom_space = ws->win_extents.bottom + size + ws->shadow_offset_y;
+
+
+    ws->left_space = MAX(ws->win_extents.left, ws->left_space);
+    ws->right_space = MAX(ws->win_extents.right, ws->right_space);
+    ws->top_space = MAX(ws->win_extents.top, ws->top_space);
+    ws->bottom_space = MAX(ws->win_extents.bottom, ws->bottom_space);
+
+    ws->shadow_left_space = MAX(0, size - ws->shadow_offset_x);
+    ws->shadow_right_space = MAX(0, size + ws->shadow_offset_x);
+    ws->shadow_top_space = MAX(0, size - ws->shadow_offset_y);
+    ws->shadow_bottom_space = MAX(0, size + ws->shadow_offset_y);
+
+    ws->shadow_left_corner_space = MAX(0, size + ws->shadow_offset_x);
+    ws->shadow_right_corner_space = MAX(0, size - ws->shadow_offset_x);
+    ws->shadow_top_corner_space = MAX(0, size + ws->shadow_offset_y);
+    ws->shadow_bottom_corner_space = MAX(0, size - ws->shadow_offset_y);
+
+    ws->left_corner_space =
+        MAX(0, ws->shadow_left_corner_space - CORNER_REDUCTION);
+    ws->right_corner_space =
+        MAX(0, ws->shadow_right_corner_space - CORNER_REDUCTION);
+    ws->top_corner_space =
+        MAX(0, ws->shadow_top_corner_space - CORNER_REDUCTION);
+    ws->bottom_corner_space =
+        MAX(0, ws->shadow_bottom_corner_space - CORNER_REDUCTION);
+
+    ws->normal_top_corner_space =
+        MAX(0, ws->top_corner_space - ws->titlebar_height);
+/*
+    d.width =
+        ws->left_space + ws->left_corner_space + 1 +
+        ws->right_corner_space + ws->right_space;
+    d.height =
+        ws->top_space + ws->titlebar_height +
+        ws->normal_top_corner_space + 2 + ws->bottom_corner_space +
+        ws->bottom_space;
+*/
+    return 1;
+}
+
+}
+
+extern "C" KDE_EXPORT KDecorationFactory *create_factory()
+{
+    return new Smaragd::DecorationFactory();
+}
+
+namespace Smaragd
+{
+
+DecorationFactory::DecorationFactory()
+{
+    ws = create_settings();
+    ws->titlebar_height = 16;
+    update_settings(ws);
+}
+
+DecorationFactory::~DecorationFactory()
+{
+    /* */
+}
+
+KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
+{
+    return (new Decoration(bridge, this))->decoration();
+}
+
+bool DecorationFactory::reset(unsigned long changed)
+{
+    resetDecorations(changed);
+    return true;
+}
+
+bool DecorationFactory::supports(Ability ability) const
+{
+    switch (ability) {
+    case AbilityAnnounceButtons:
+    case AbilityButtonMenu:
+    case AbilityButtonOnAllDesktops:
+    case AbilityButtonSpacer:
+    case AbilityButtonHelp:
+    case AbilityButtonMinimize:
+    case AbilityButtonMaximize:
+    case AbilityButtonClose:
+    case AbilityButtonAboveOthers:
+    case AbilityButtonBelowOthers:
+    case AbilityButtonShade:
+        return true;
+#if KDE_IS_VERSION(4,3,0)
+    case AbilityProvidesShadow:
+    case AbilityUsesAlphaChannel:
+        return true;
+#endif
+#if KDE_IS_VERSION(4,4,0)
+    case AbilityExtendIntoClientArea:
+        return true;
+#endif
+    default:
+        return false;
+    }
+}
+
+
+Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
+    : KCommonDecoration(bridge, factory)
+{
+    /* */
+}
+
+Decoration::~Decoration()
+{
+    /* */
+}
+
+QString Decoration::visibleName() const
+{
+    return i18n("Smaragd");
+}
+
+bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
+{
+    switch (behaviour) {
+    case DB_WindowMask:
+        return false;
+    case DB_MenuClose:
+    case DB_ButtonHide:
+        return true;
+    default:
+        return KCommonDecoration::decorationBehaviour(behaviour);
+    }
+}
+
+int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCommonDecorationButton *button) const
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
+
+    switch (lm) {
+    case LM_BorderLeft:
+        return border ? ws->left_space + ws->left_corner_space : 0;
+    case LM_BorderRight:
+        return border ? ws->right_space + ws->right_corner_space : 0;
+    case LM_BorderBottom:
+        return border ? ws->bottom_space + ws->bottom_corner_space : 0;
+    case LM_TitleBorderLeft:
+    case LM_TitleBorderRight:
+        return 2;
+    case LM_TitleEdgeLeft:
+    case LM_TitleEdgeRight:
+        return border ? 4 : 0;
+    case LM_TitleEdgeTop:
+        return border ? ws->top_space + ws->normal_top_corner_space : 0;
+    case LM_TitleEdgeBottom:
+        return 0;
+    case LM_TitleHeight:
+        return ws->titlebar_height;
+    case LM_ButtonHeight:
+        return 16;
+    case LM_ButtonWidth:
+        return 16;
+    case LM_ButtonSpacing:
+        return 0;
+    case LM_ExplicitButtonSpacer:
+        return 1;
+    case LM_ButtonMarginTop:
+        return 0;
+#if KDE_IS_VERSION(4,3,0)
+    case LM_OuterPaddingLeft:
+    case LM_OuterPaddingTop:
+    case LM_OuterPaddingRight:
+    case LM_OuterPaddingBottom:
+        return 0;
+#endif
+    }
+    return KCommonDecoration::layoutMetric(lm, respectWindowState, button);
+}
+
+KCommonDecorationButton *Decoration::createButton(ButtonType type)
+{
+    return new DecorationButton(type, this);
+}
+
+void Decoration::init()
+{
+    KCommonDecoration::init();
+    widget()->setAutoFillBackground(false);
+    widget()->setAttribute(Qt::WA_NoSystemBackground, true);
+    widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
+
+    d = (decor_t *) malloc(sizeof(decor_t));
+    bzero(d, sizeof(decor_t));
+
+    // ### Title objects position and sizes
+    d->tobj_pos[0] = 0; // left
+    d->tobj_pos[1] = 0; // mid
+    d->tobj_pos[2] = 0; // right
+    d->tobj_size[0] = 0;
+    d->tobj_size[1] = 0;
+    d->tobj_size[2] = 0;
+
+    // ### Buttons
+    for (int i = 0; i < 11; ++i) {
+        d->tobj_item_pos[i] = 0;
+        d->tobj_item_width[i] = 0;
+        d->tobj_item_state[i] = 3;
+    }
+}
+
+void Decoration::paintEvent(QPaintEvent */*event */)
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    bool active = isActive();
+    QPainter painter(widget());
+
+    d->width = width();
+    d->height = height();
+
+    d->client_width = d->width - (
+        ws->left_space + ws->left_corner_space +
+        ws->right_corner_space + ws->right_space);
+    d->client_height = d->height - (
+        ws->top_space + ws->titlebar_height +
+        ws->normal_top_corner_space + ws->bottom_corner_space +
+        ws->bottom_space);
+
+    // ### PangoLayout
+    d->layout = 0;
+
+    d->state = WnckWindowState(0); //WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
+    d->decorated = true;
+    d->active = active;
+
+    d->fs = active ? ws->fs_act : ws->fs_inact;
+
+    QSize size(d->width, d->height);
+    QSize allocSize(cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, size.width()) / 4, size.height());
+
+    QImage image(allocSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(qRgba(0, 0, 0, 0));
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    surface = cairo_image_surface_create_for_data(image.bits(), CAIRO_FORMAT_ARGB32, size.width(), image.height(), image.bytesPerLine());
+    cr = cairo_create(surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_line_width(cr, 1.0);
+    draw_frame(d, cr);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+
+    painter.setPen(QColor(0, 150, 0, 200));
+    painter.setBrush(QColor(0, 255, 0, 100));
+    painter.drawRect(widget()->rect().adjusted(0, 0, -1, -1));
+
+    painter.drawImage(0, 0, image);
+
+    painter.setFont(options()->font(active));
+    Qt::Alignment alignment = Qt::AlignHCenter;
+    QRect labelRect = titleRect().adjusted(0, 0, 1, 1);
+
+    painter.setPen(QColor(150, 150, 150, 200));
+    painter.setBrush(options()->color(ColorTitleBar, active));
+    painter.drawRect(labelRect.adjusted(0, 0, -1, -1));
+
+    QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
+    painter.setPen(QColor(0, 0, 0, 25));
+    painter.drawText(labelRect.adjusted(1, 1, 1, 1), alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
+    painter.setPen(options()->color(ColorFont, active));
+    painter.drawText(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
+}
+
+
+DecorationButton::DecorationButton(ButtonType type, KCommonDecoration *parent)
+    : KCommonDecorationButton(type, parent)
+{
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    setAutoFillBackground(false);
+    setFocusPolicy(Qt::NoFocus);
+    setAttribute(Qt::WA_OpaquePaintEvent, false);
+    setAttribute(Qt::WA_Hover, true);
+}
+
+DecorationButton::~DecorationButton()
+{
+    /* */
+}
+
+void DecorationButton::reset(unsigned long /*changed*/)
+{
+    /* NOTE: must be implemented, because it is declared pure */
+}
+
+void DecorationButton::paintEvent(QPaintEvent */* event */)
+{
+    QPainter painter(this);
+
+    painter.setPen(QColor(0, 150, 0, 200));
+    painter.setBrush(QColor(0, 255, 0, 100));
+    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+}
+
+}; // namespace Smaragd
+
+#include "kwin_smaragd.moc"
+
