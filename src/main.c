@@ -20,7 +20,7 @@
 #define NEED_BUTTON_BISTATES
 #define NEED_BUTTON_STATE_FLAGS
 //#define NEED_BUTTON_ACTIONS
-//#define NEED_BUTTON_FILE_NAMES
+#define NEED_BUTTON_FILE_NAMES
 #include <emerald.h>
 #include <engine.h>
 
@@ -1671,8 +1671,10 @@ static int update_shadow(frame_settings * fs)
 #endif
     return 1;
 }
+#endif /* ************************ */
 static void titlebar_font_changed(window_settings * ws)
 {
+#if 0
     PangoFontMetrics *metrics;
     PangoLanguage *lang;
 
@@ -1683,12 +1685,12 @@ static void titlebar_font_changed(window_settings * ws)
 
     ws->text_height = PANGO_PIXELS(pango_font_metrics_get_ascent(metrics) +
                                    pango_font_metrics_get_descent(metrics));
-
+#endif
     ws->titlebar_height = ws->text_height;
     if (ws->titlebar_height < ws->min_titlebar_height)
         ws->titlebar_height = ws->min_titlebar_height;
 
-    pango_font_metrics_unref(metrics);
+//    pango_font_metrics_unref(metrics);
 
 }
 
@@ -1697,7 +1699,7 @@ static void load_buttons_image(window_settings * ws, gint y)
     gchar *file;
     int x, pix_width, pix_height, rel_button;
 
-    rel_button = get_b_offset(y);
+    rel_button = /*get_b_offset*/(y);
 
 
 
@@ -1846,7 +1848,6 @@ void load_button_image_setting(window_settings * ws)
     if (ws->use_button_glow || ws->use_button_inactive_glow)
         load_buttons_glow_images(ws);
 }
-#endif /* ************************ */
 static void load_settings(window_settings * ws)
 {
     gchar *engine = NULL;
@@ -1938,8 +1939,8 @@ static void load_settings(window_settings * ws)
     load_bool_setting(f, &ws->use_button_inactive_glow,
                       "use_button_inactive_glow", "buttons");
 
-//    if (ws->use_pixmap_buttons)
-//        load_button_image_setting(ws);
+    if (ws->use_pixmap_buttons)
+        load_button_image_setting(ws);
     load_shadow_color_setting(f, ws->shadow_color, "shadow_color", "shadow");
     load_int_setting(f, &ws->shadow_offset_x, "shadow_offset_x", "shadow");
     load_int_setting(f, &ws->shadow_offset_y, "shadow_offset_y", "shadow");
@@ -1978,7 +1979,7 @@ void update_settings(window_settings * ws)
     gdkscreen = gdk_display_get_default_screen(gdkdisplay);
 #endif
 
-//    titlebar_font_changed(ws);
+    titlebar_font_changed(ws);
     update_window_extents(ws);
     update_shadow(ws->fs_act);
 #if 0

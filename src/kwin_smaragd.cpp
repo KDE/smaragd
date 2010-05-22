@@ -189,6 +189,65 @@ int update_shadow(frame_settings * fs)
     return 1;
 }
 
+struct _GdkPixbuf
+{
+    QImage image;
+};
+
+void g_object_unref(void *x)
+{
+    delete (_GdkPixbuf *) x;
+}
+
+int gdk_pixbuf_get_width(GdkPixbuf *pixbuf)
+{
+    return pixbuf->image.width();
+}
+
+int gdk_pixbuf_get_height(GdkPixbuf *pixbuf)
+{
+    return pixbuf->image.height();
+}
+
+GdkPixbuf *gdk_pixbuf_new(int /*colorspace*/, gboolean /*unknown1*/, int /*unknown2*/, int w, int h)
+{
+    _GdkPixbuf *pixbuf = new _GdkPixbuf;
+    pixbuf->image = QImage(w, h, QImage::Format_ARGB32_Premultiplied);
+    pixbuf->image.fill(qRgba(0, 0, 0, 0));
+    return pixbuf;
+}
+
+GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, void */*unknown*/)
+{
+    _GdkPixbuf *pixbuf = new _GdkPixbuf;
+    pixbuf->image = QImage(QString::fromAscii(file));
+    return pixbuf;
+}
+
+GdkPixbuf *gdk_pixbuf_new_subpixbuf(GdkPixbuf *source, int x, int y, int w, int h)
+{
+    _GdkPixbuf *pixbuf = new _GdkPixbuf;
+    pixbuf->image = source->image.copy(x, y, w, h);
+    return pixbuf;
+}
+
+void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, int h, double source_x, double source_y, double scale_x, double scale_y, int /*interp*/)
+{
+    QPainter p(&dest->image);
+    p.drawImage(QRect(x, y, w, h), source->image, QRect(qRound(source_x), qRound(source_y), qRound(w / scale_x), qRound(h / scale_y)));
+    p.end();
+}
+
+int gdk_pixbuf_get_colorspace()
+{
+    return GDK_COLORSPACE_RGB;
+}
+
+int gdk_pixbuf_get_bits_per_sample()
+{
+    return 8;
+}
+
 }
 
 extern "C" KDE_EXPORT KDecorationFactory *create_factory()
@@ -200,9 +259,11 @@ namespace Smaragd
 {
 
 DecorationFactory::DecorationFactory()
+    : KDecorationFactory()
 {
     ws = create_settings();
-    ws->titlebar_height = 16;
+    QFontMetrics fm(options()->font(true));
+    ws->text_height = fm.height();
     update_settings(ws);
 }
 
@@ -281,6 +342,45 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
     }
 }
 
+int Decoration::buttonGlyph(ButtonType type) const
+{
+    int y;
+
+    switch (type) {
+    case HelpButton:
+        y = B_HELP;
+        break;
+    case MaxButton:
+        y = maximizeMode() == MaximizeFull ? B_RESTORE : B_MAXIMIZE;
+        break;
+    case MinButton:
+        y = B_MINIMIZE;
+        break;
+    case CloseButton:
+        y = B_CLOSE;
+        break;
+    case MenuButton:
+        y = B_MENU;
+        break;
+    case OnAllDesktopsButton:
+        y = isOnAllDesktops() ? B_UNSTICK : B_STICK;
+        break;
+    case AboveButton:
+        y = keepAbove() ? B_UNABOVE : B_ABOVE;
+        break;
+    case BelowButton:
+        y = keepBelow() ? B_UNABOVE : B_ABOVE;
+        break;
+    case ShadeButton:
+        y = isShade() ? B_UNSHADE : B_SHADE;
+        break;
+    default:
+        y = B_RESTORE;
+        break;
+    }
+    return y;
+}
+
 int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCommonDecorationButton *button) const
 {
     window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
@@ -297,24 +397,33 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     case LM_TitleBorderRight:
         return 2;
     case LM_TitleEdgeLeft:
+        return border ? ws->left_space + ws->button_hoffset : 0;
     case LM_TitleEdgeRight:
-        return border ? 4 : 0;
+        return border ? ws->right_space + ws->button_hoffset : 0;
     case LM_TitleEdgeTop:
-        return border ? ws->top_space + ws->normal_top_corner_space : 0;
+        return 0;
     case LM_TitleEdgeBottom:
         return 0;
     case LM_TitleHeight:
-        return ws->titlebar_height;
+        return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
     case LM_ButtonHeight:
-        return 16;
-    case LM_ButtonWidth:
-        return 16;
+    case LM_ButtonWidth: {
+        GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(button->type()) * S_COUNT];
+        if (pixbuf) {
+            if (lm == LM_ButtonWidth) {
+                return gdk_pixbuf_get_width(pixbuf);
+            } else {
+                return gdk_pixbuf_get_height(pixbuf);
+            }
+        }
+        return 0;
+    }
     case LM_ButtonSpacing:
         return 0;
     case LM_ExplicitButtonSpacer:
         return 1;
     case LM_ButtonMarginTop:
-        return 0;
+        return border ? ws->button_offset : 0;
 #if KDE_IS_VERSION(4,3,0)
     case LM_OuterPaddingLeft:
     case LM_OuterPaddingTop:
@@ -377,7 +486,15 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     // ### PangoLayout
     d->layout = 0;
 
-    d->state = WnckWindowState(0); //WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
+    int state = 0;
+    if (maximizeMode() && MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
+    if (maximizeMode() && MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+    if (isShade()) state |= WNCK_WINDOW_STATE_SHADED;
+    if (isOnAllDesktops()) state |= WNCK_WINDOW_STATE_STICKY;
+    if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
+    if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
+    d->state = WnckWindowState(state);
+
     d->decorated = true;
     d->active = active;
 
@@ -399,24 +516,28 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
 
-    painter.setPen(QColor(0, 150, 0, 200));
-    painter.setBrush(QColor(0, 255, 0, 100));
-    painter.drawRect(widget()->rect().adjusted(0, 0, -1, -1));
-
     painter.drawImage(0, 0, image);
 
     painter.setFont(options()->font(active));
     Qt::Alignment alignment = Qt::AlignHCenter;
     QRect labelRect = titleRect().adjusted(0, 0, 1, 1);
 
-    painter.setPen(QColor(150, 150, 150, 200));
-    painter.setBrush(options()->color(ColorTitleBar, active));
-    painter.drawRect(labelRect.adjusted(0, 0, -1, -1));
-
     QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
-    painter.setPen(QColor(0, 0, 0, 25));
+    const bool respectKWinColors = false;
+
+    if (respectKWinColors) {
+        painter.setPen(QColor(0, 0, 0, 25));
+    } else {
+        alpha_color &c = d->fs->text_halo;
+        painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
+    }
     painter.drawText(labelRect.adjusted(1, 1, 1, 1), alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
-    painter.setPen(options()->color(ColorFont, active));
+    if (respectKWinColors) {
+        painter.setPen(options()->color(ColorFont, active));
+    } else {
+        alpha_color &c = d->fs->text;
+        painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
+    }
     painter.drawText(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
 }
 
@@ -443,11 +564,22 @@ void DecorationButton::reset(unsigned long /*changed*/)
 
 void DecorationButton::paintEvent(QPaintEvent */* event */)
 {
+    Decoration *deco = static_cast<Decoration *>(decoration());
+    window_settings *ws = (static_cast<DecorationFactory *>(deco->factory()))->windowSettings();
     QPainter painter(this);
 
-    painter.setPen(QColor(0, 150, 0, 200));
-    painter.setBrush(QColor(0, 255, 0, 100));
-    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    int x = 0; //state
+    if (isDown()) {
+        x = 2;
+    } else if (underMouse()) {
+        x = 1;
+    }
+    if (!decoration()->isActive()) {
+        x += 3;
+    }
+
+    int y = deco->buttonGlyph(type());
+    painter.drawImage(0, 0, ws->ButtonPix[x + y * S_COUNT]->image);
 }
 
 }; // namespace Smaragd

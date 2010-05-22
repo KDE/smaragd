@@ -70,6 +70,8 @@ public:
 
     virtual void paintEvent(QPaintEvent *event);
 
+    int buttonGlyph(ButtonType type) const;
+
 private:
     decor_t *d;
 };
