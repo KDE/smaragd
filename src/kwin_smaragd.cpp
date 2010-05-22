@@ -411,6 +411,8 @@ static QString parseButtonLayout(char *p)
 
     while ((c = *p++)) {
         switch (c) {
+        case ':':
+            return buttons;
         case 'H': // B_HELP
             buttons += 'H';
             break;
@@ -450,7 +452,7 @@ static QString parseButtonLayout(char *p)
                 }
             } while (c != ')' && c != 0);
             if (s < 100) {
-                while (--s > 0) {
+                while (--s >= 0) {
                     buttons += '_';
                 }
             }
