@@ -28,6 +28,7 @@
 #include <kdeversion.h>
 
 #include <QtGui/QPainter>
+#include <QtGui/QBitmap>
 
 #include <cairo.h>
 
@@ -348,6 +349,7 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
 {
     switch (behaviour) {
     case DB_WindowMask:
+        // ### disable mask until I get it working correctly
         return false;
     case DB_MenuClose:
     case DB_ButtonHide:
@@ -355,6 +357,59 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
     default:
         return KCommonDecoration::decorationBehaviour(behaviour);
     }
+}
+
+QRegion Decoration::cornerShape(WindowCorner corner)
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
+    if (!border) {
+        return QRegion();
+    }
+    // ### shadow
+    int radius = ws->left_space + 1;
+
+    QBitmap mask(radius, radius);
+    mask.fill(Qt::color1);
+    QPainter painter(&mask);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::color0);
+
+    switch (corner)
+    {
+    case WC_TopLeft:
+        painter.drawEllipse(0, 0, radius * 2, radius * 2);
+        break;
+    case WC_TopRight:
+        painter.drawEllipse(-radius, 0, radius * 2, radius * 2);
+        break;
+    case WC_BottomLeft:
+        painter.drawEllipse(0, -radius, radius * 2, radius * 2);
+        break;
+    case WC_BottomRight:
+        painter.drawEllipse(-radius, -radius, radius * 2, radius * 2);
+        break;
+    }
+    painter.end();
+    QRegion region(mask);
+    switch (corner)
+    {
+    case WC_TopLeft:
+        break;
+    case WC_TopRight:
+        region.translate(width() - radius, 0);
+        break;
+    case WC_BottomLeft:
+        region.translate(0, height() - radius);
+        break;
+    case WC_BottomRight:
+        region.translate(width() - radius, height() - radius);
+        break;
+    }
+#if KDE_IS_VERSION(4,3,0)
+    region.translate(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true));
+#endif
+    return region;
 }
 
 int Decoration::buttonGlyph(ButtonType type) const
@@ -637,7 +692,13 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
 
+#if KDE_IS_VERSION(4,3,0)
+    // ### fake shadow
+    // painter.fillRect(widget()->rect(), QColor(255, 0, 0, 100));
+    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), image);
+#else
     painter.drawImage(0, 0, image);
+#endif
 
     painter.setFont(options()->font(active));
     Qt::Alignment alignment = Qt::AlignHCenter;
