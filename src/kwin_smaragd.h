@@ -75,6 +75,9 @@ public:
 
     int buttonGlyph(ButtonType type) const;
 
+protected:
+    QImage decorationImage(const QSize &size, bool active);
+
 private:
     decor_t *d;
 };

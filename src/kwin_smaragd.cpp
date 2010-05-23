@@ -319,8 +319,8 @@ bool DecorationFactory::supports(Ability ability) const
         return true;
 #endif
 #if KDE_IS_VERSION(4,4,0)
-    case AbilityExtendIntoClientArea:
-        return true;
+//    case AbilityExtendIntoClientArea:
+//        return true;
 #endif
     default:
         return false;
@@ -638,14 +638,12 @@ void Decoration::init()
     }
 }
 
-void Decoration::paintEvent(QPaintEvent */*event */)
+QImage Decoration::decorationImage(const QSize &size, bool active)
 {
     window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
-    bool active = isActive();
-    QPainter painter(widget());
 
-    d->width = width();
-    d->height = height();
+    d->width = size.width();
+    d->height = size.height();
 
     d->client_width = d->width - (
         ws->left_space + ws->left_corner_space +
@@ -676,7 +674,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     d->fs = active ? ws->fs_act : ws->fs_inact;
 
-    QSize size(d->width, d->height);
     QSize allocSize(cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, size.width()) / 4, size.height());
 
     QImage image(allocSize, QImage::Format_ARGB32_Premultiplied);
@@ -692,6 +689,16 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
 
+    return image;
+}
+
+void Decoration::paintEvent(QPaintEvent */*event */)
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    bool active = isActive();
+    QPainter painter(widget());
+
+    QImage image = decorationImage(QSize(width(), height()), active);
 #if KDE_IS_VERSION(4,3,0)
     // ### fake shadow
     // painter.fillRect(widget()->rect(), QColor(255, 0, 0, 100));
