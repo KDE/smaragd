@@ -314,7 +314,7 @@ bool DecorationFactory::supports(Ability ability) const
     case AbilityButtonShade:
         return true;
 #if KDE_IS_VERSION(4,3,0)
-    case AbilityProvidesShadow:
+//    case AbilityProvidesShadow:
     case AbilityUsesAlphaChannel:
         return true;
 #endif
@@ -349,8 +349,7 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
 {
     switch (behaviour) {
     case DB_WindowMask:
-        // ### disable mask until I get it working correctly
-        return false;
+        return true;
     case DB_MenuClose:
     case DB_ButtonHide:
         return true;
@@ -359,51 +358,60 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
     }
 }
 
+#define ALPHA_TRESHOLD 200
+
+static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
+{
+    QSize cornerSize = maxSize.boundedTo(image.size());
+    QImage cornerImage(cornerSize, QImage::Format_MonoLSB);
+    cornerImage.fill(1);
+
+    int xd = 1, yd = 1; // scanning direction
+    int sx = 0, sy = 0;
+    int cx = 0, cy = 0;
+    if (int(corner) & int(KCommonDecoration::WC_TopRight)) {
+        xd = -1;
+        sx = image.width() - 1;
+        cx = cornerImage.width() - 1;
+    }
+    if (int(corner) & int (KCommonDecoration::WC_BottomLeft)) {
+        yd = -1;
+        sy = image.height() - 1;
+        cy = cornerImage.height() - 1;
+    }
+
+    for (int y = 0, ys = sy, yc = cy; y < cornerSize.height(); ++y, ys += yd, yc += yd) {
+        for (int x = 0, xs = sx, xc = cx; x < cornerSize.width(); ++x, xs += xd, xc += xd) {
+            QRgb pixel = QRgb(image.pixel(xs, ys));
+            if (qAlpha(pixel) > ALPHA_TRESHOLD) {
+                break;
+            }
+            cornerImage.setPixel(xc, yc, 0);
+        }
+    }
+    return QRegion(QBitmap::fromImage(cornerImage));
+}
+
 QRegion Decoration::cornerShape(WindowCorner corner)
 {
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
     bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
     if (!border) {
         return QRegion();
     }
-    // ### shadow
-    int radius = ws->left_space + 1;
 
-    QBitmap mask(radius, radius);
-    mask.fill(Qt::color1);
-    QPainter painter(&mask);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(Qt::color0);
-
-    switch (corner)
-    {
-    case WC_TopLeft:
-        painter.drawEllipse(0, 0, radius * 2, radius * 2);
-        break;
-    case WC_TopRight:
-        painter.drawEllipse(-radius, 0, radius * 2, radius * 2);
-        break;
-    case WC_BottomLeft:
-        painter.drawEllipse(0, -radius, radius * 2, radius * 2);
-        break;
-    case WC_BottomRight:
-        painter.drawEllipse(-radius, -radius, radius * 2, radius * 2);
-        break;
-    }
-    painter.end();
-    QRegion region(mask);
+    QRegion region = findCornerShape(decorationImage(QSize(96, 64), true), corner, QSize(32, 32));
     switch (corner)
     {
     case WC_TopLeft:
         break;
     case WC_TopRight:
-        region.translate(width() - radius, 0);
+        region.translate(width() - 32, 0);
         break;
     case WC_BottomLeft:
-        region.translate(0, height() - radius);
+        region.translate(0, height() - 32);
         break;
     case WC_BottomRight:
-        region.translate(width() - radius, height() - radius);
+        region.translate(width() - 32, height() - 32);
         break;
     }
 #if KDE_IS_VERSION(4,3,0)
