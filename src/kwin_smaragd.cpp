@@ -358,8 +358,6 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
     }
 }
 
-#define ALPHA_TRESHOLD 200
-
 static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
 {
     QSize cornerSize = maxSize.boundedTo(image.size());
@@ -380,10 +378,11 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
         cy = cornerImage.height() - 1;
     }
 
+    int threshold = qAlpha(QRgb(image.pixel(sx + (cornerSize.width() - 1) * xd, sy)));
     for (int y = 0, ys = sy, yc = cy; y < cornerSize.height(); ++y, ys += yd, yc += yd) {
         for (int x = 0, xs = sx, xc = cx; x < cornerSize.width(); ++x, xs += xd, xc += xd) {
             QRgb pixel = QRgb(image.pixel(xs, ys));
-            if (qAlpha(pixel) > ALPHA_TRESHOLD) {
+            if (qAlpha(pixel) >= threshold) {
                 break;
             }
             cornerImage.setPixel(xc, yc, 0);
