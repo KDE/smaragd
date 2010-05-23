@@ -1,3 +1,4 @@
 [Desktop Entry]
 Name=Smaragd
+Name[x-test]=xxSmaragdxx
 X-KDE-Library=kwin3_smaragd
