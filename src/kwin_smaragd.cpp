@@ -136,9 +136,12 @@ void load_engine_settings(GKeyFile *f, window_settings *ws)
 
 int update_shadow(frame_settings * fs)
 {
-    int size = 0;
-
     window_settings *ws = fs->ws;
+
+    int size = ws->shadow_radius * 2 + 2;
+
+    ws->shadow_offset_x = ws->shadow_offset_y = size = 0;
+
     if (ws->shadow_radius <= 0.0 && ws->shadow_offset_x == 0 &&
         ws->shadow_offset_y == 0)
         size = 0;
@@ -221,8 +224,13 @@ GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits
 
 GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, GError **/*error*/)
 {
+    QImage image = QImage(QString::fromAscii(file));
+
+    if (image.isNull()) {
+        return 0;
+    }
     _GdkPixbuf *pixbuf = new _GdkPixbuf;
-    pixbuf->image = QImage(QString::fromAscii(file));
+    pixbuf->image = image;
     return pixbuf;
 }
 
