@@ -27,8 +27,7 @@
 #include <KDE/KLocale>
 #include <kdeversion.h>
 
-#include <QtGui/QStyleOption>
-#include <QtGui/QStylePainter>
+#include <QtGui/QPainter>
 
 #include <cairo.h>
 
@@ -219,6 +218,7 @@ GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits
 
     _GdkPixbuf *pixbuf = new _GdkPixbuf;
     pixbuf->image = QImage(w, h, has_alpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_RGB32);
+    pixbuf->image.fill(qRgba(0, 0, 0, 0));
     return pixbuf;
 }
 
@@ -283,7 +283,7 @@ DecorationFactory::DecorationFactory()
 
 DecorationFactory::~DecorationFactory()
 {
-    /* */
+    free(ws);
 }
 
 KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
@@ -330,12 +330,13 @@ bool DecorationFactory::supports(Ability ability) const
 Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
     : KCommonDecoration(bridge, factory)
 {
-    /* */
+    d = (decor_t *) malloc(sizeof(decor_t));
+    bzero(d, sizeof(decor_t));
 }
 
 Decoration::~Decoration()
 {
-    /* */
+    free(d);
 }
 
 QString Decoration::visibleName() const
@@ -521,14 +522,18 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     case LM_ButtonHeight:
     case LM_ButtonWidth: {
         if (button->type() == MenuButton) {
-            return 16;
+            if (lm == LM_ButtonWidth) {
+                return 16;
+            } else {
+                return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
+            }
         }
         GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(button->type()) * S_COUNT];
         if (pixbuf) {
             if (lm == LM_ButtonWidth) {
                 return gdk_pixbuf_get_width(pixbuf);
             } else {
-                return gdk_pixbuf_get_height(pixbuf);
+                return gdk_pixbuf_get_height(pixbuf) + ws->button_offset;
             }
         }
         return 0;
@@ -538,7 +543,7 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     case LM_ExplicitButtonSpacer:
         return 1;
     case LM_ButtonMarginTop:
-        return border ? ws->button_offset : 0;
+        return 0;
 #if KDE_IS_VERSION(4,3,0)
     case LM_OuterPaddingLeft:
     case LM_OuterPaddingTop:
@@ -561,9 +566,6 @@ void Decoration::init()
     widget()->setAutoFillBackground(false);
     widget()->setAttribute(Qt::WA_NoSystemBackground, true);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
-
-    d = (decor_t *) malloc(sizeof(decor_t));
-    bzero(d, sizeof(decor_t));
 
     // ### Title objects position and sizes
     d->tobj_pos[0] = 0; // left
@@ -602,8 +604,12 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     d->layout = 0;
 
     int state = 0;
-    if (maximizeMode() && MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
-    if (maximizeMode() && MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+#if 0
+    if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
+    if (maximizeMode() & MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+#else
+    if (maximizeMode() == MaximizeFull) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY | WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+#endif
     if (isShade()) state |= WNCK_WINDOW_STATE_SHADED;
     if (isOnAllDesktops()) state |= WNCK_WINDOW_STATE_STICKY;
     if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
@@ -697,12 +703,12 @@ void DecorationButton::paintEvent(QPaintEvent */* event */)
     }
 
     if (type() == MenuButton) {
-        painter.drawPixmap(0, 0, icon().pixmap(rect().size()));
+        deco->icon().paint(&painter, rect());
         return;
     }
 
     int y = deco->buttonGlyph(type());
-    painter.drawImage(0, 0, ws->ButtonPix[x + y * S_COUNT]->image);
+    painter.drawImage(0, ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
 }
 
 }; // namespace Smaragd

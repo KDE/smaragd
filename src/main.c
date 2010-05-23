@@ -33,7 +33,7 @@ extern int update_shadow(frame_settings *);
     ((ddd)->tobj_item_state[(xxx)] == 3 || !((ddd)->actions & button_actions[(xxx)]))
 
 //static gboolean enable_tooltips = TRUE;
-#if 0 /* ************************ */
+
 static gint get_b_offset(gint b)
 {
     static int boffset[B_COUNT+1];
@@ -51,6 +51,7 @@ static gint get_b_offset(gint b)
     }
     return boffset[b];
 }
+#if 0 /* ************************ */
 static gint get_b_t_offset(gint b_t)
 {
     static int btoffset[B_T_COUNT];
@@ -1699,7 +1700,7 @@ static void load_buttons_image(window_settings * ws, gint y)
     gchar *file;
     int x, pix_width, pix_height, rel_button;
 
-    rel_button = /*get_b_offset*/(y);
+    rel_button = get_b_offset(y);
 
 
 
