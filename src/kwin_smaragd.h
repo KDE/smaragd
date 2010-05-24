@@ -47,9 +47,12 @@ public:
 
 public:
     window_settings *windowSettings() const { return ws; }
+    QRegion cornerShape(KCommonDecoration::WindowCorner corner) const;
+    QImage decorationImage(const QSize &size, bool active, int state) const;
 
 private:
-    window_settings *ws;
+    window_settings *ws; // must be first entry because of inline method to access it
+    QRegion cornerRegion[4];
 };
 
 class Decoration : public KCommonDecoration
@@ -73,14 +76,8 @@ public:
 
     virtual void paintEvent(QPaintEvent *event);
 
+public:
     int buttonGlyph(ButtonType type) const;
-
-protected:
-    QImage decorationImage(const QSize &size, bool active);
-
-private:
-    QImage decoCache;
-    bool cacheState;
 };
 
 class DecorationButton : public KCommonDecorationButton

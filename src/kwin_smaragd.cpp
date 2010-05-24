@@ -273,6 +273,40 @@ extern "C" KDE_EXPORT KDecorationFactory *create_factory()
 namespace Smaragd
 {
 
+static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
+{
+    QSize cornerSize = maxSize.boundedTo(image.size());
+    QImage cornerImage(cornerSize, QImage::Format_MonoLSB);
+    cornerImage.fill(1);
+
+    int xd = 1, yd = 1; // scanning direction
+    int sx = 0, sy = 0;
+    int cx = 0, cy = 0;
+    if (int(corner) & int(KCommonDecoration::WC_TopRight)) {
+        xd = -1;
+        sx = image.width() - 1;
+        cx = cornerImage.width() - 1;
+    }
+    if (int(corner) & int (KCommonDecoration::WC_BottomLeft)) {
+        yd = -1;
+        sy = image.height() - 1;
+        cy = cornerImage.height() - 1;
+    }
+
+    int threshold = qAlpha(QRgb(image.pixel(sx + (cornerSize.width() - 1) * xd, sy))) >> 1;
+    for (int y = 0, ys = sy, yc = cy; y < cornerSize.height(); ++y, ys += yd, yc += yd) {
+        for (int x = 0, xs = sx, xc = cx; x < cornerSize.width(); ++x, xs += xd, xc += xd) {
+            QRgb pixel = QRgb(image.pixel(xs, ys));
+            if (qAlpha(pixel) >= threshold) {
+                break;
+            }
+            cornerImage.setPixel(xc, yc, 0);
+        }
+    }
+    return QRegion(QBitmap::fromImage(cornerImage));
+}
+
+
 DecorationFactory::DecorationFactory()
     : KDecorationFactory()
 {
@@ -280,6 +314,11 @@ DecorationFactory::DecorationFactory()
     QFontMetrics fm(options()->font(true));
     ws->text_height = fm.height();
     update_settings(ws);
+
+    QImage decoImage = decorationImage(QSize(96, 64), true, 0);
+    for (int corner = 0; corner < 4; ++corner) {
+        cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
+    }
 }
 
 DecorationFactory::~DecorationFactory()
@@ -327,10 +366,14 @@ bool DecorationFactory::supports(Ability ability) const
     }
 }
 
+QRegion DecorationFactory::cornerShape(KCommonDecoration::WindowCorner corner) const
+{
+    return cornerRegion[int(corner)];
+}
+
 
 Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
     : KCommonDecoration(bridge, factory)
-    , cacheState(false)
 {
 }
 
@@ -356,40 +399,6 @@ bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
     }
 }
 
-static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
-{
-    QSize cornerSize = maxSize.boundedTo(image.size());
-    QImage cornerImage(cornerSize, QImage::Format_MonoLSB);
-    cornerImage.fill(1);
-
-    int xd = 1, yd = 1; // scanning direction
-    int sx = 0, sy = 0;
-    int cx = 0, cy = 0;
-    if (int(corner) & int(KCommonDecoration::WC_TopRight)) {
-        xd = -1;
-        sx = image.width() - 1;
-        cx = cornerImage.width() - 1;
-    }
-    if (int(corner) & int (KCommonDecoration::WC_BottomLeft)) {
-        yd = -1;
-        sy = image.height() - 1;
-        cy = cornerImage.height() - 1;
-    }
-
-    int threshold = qAlpha(QRgb(image.pixel(sx + (cornerSize.width() - 1) * xd, sy)));
-    threshold = 1;
-    for (int y = 0, ys = sy, yc = cy; y < cornerSize.height(); ++y, ys += yd, yc += yd) {
-        for (int x = 0, xs = sx, xc = cx; x < cornerSize.width(); ++x, xs += xd, xc += xd) {
-            QRgb pixel = QRgb(image.pixel(xs, ys));
-            if (qAlpha(pixel) >= threshold) {
-                break;
-            }
-            cornerImage.setPixel(xc, yc, 0);
-        }
-    }
-    return QRegion(QBitmap::fromImage(cornerImage));
-}
-
 QRegion Decoration::cornerShape(WindowCorner corner)
 {
     bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
@@ -397,10 +406,7 @@ QRegion Decoration::cornerShape(WindowCorner corner)
         return QRegion();
     }
 
-    if (decoCache.width() < 96 || decoCache.height() < 64) {
-        decoCache = decorationImage(QSize(96, 64), cacheState);
-    }
-    QRegion region = findCornerShape(decoCache, corner, QSize(32, 32));
+    QRegion region = static_cast<DecorationFactory *>(factory())->cornerShape(corner);
     switch (corner)
     {
     case WC_TopLeft:
@@ -632,9 +638,8 @@ void Decoration::init()
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
 }
 
-QImage Decoration::decorationImage(const QSize &size, bool active)
+QImage DecorationFactory::decorationImage(const QSize &size, bool active, int state) const
 {
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
     decor_t deco, *d = &deco;
     bzero(d, sizeof(decor_t));
 
@@ -667,17 +672,6 @@ QImage Decoration::decorationImage(const QSize &size, bool active)
     // ### PangoLayout
     d->layout = 0;
 
-    int state = 0;
-#if 0
-    if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
-    if (maximizeMode() & MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
-#else
-    if (maximizeMode() == MaximizeFull) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY | WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
-#endif
-    if (isShade()) state |= WNCK_WINDOW_STATE_SHADED;
-    if (isOnAllDesktops()) state |= WNCK_WINDOW_STATE_STICKY;
-    if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
-    if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
     d->state = WnckWindowState(state);
 
     d->decorated = true;
@@ -709,17 +703,26 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     bool active = isActive();
     QPainter painter(widget());
 
-    if (cacheState != active || decoCache.size() != QSize(width(), height())) {
-        decoCache = decorationImage(QSize(width(), height()), active);
-        cacheState = active;
-    }
+    int state = 0;
+#if 0
+    if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
+    if (maximizeMode() & MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+#else
+    if (maximizeMode() == MaximizeFull) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY | WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+#endif
+    if (isShade()) state |= WNCK_WINDOW_STATE_SHADED;
+    if (isOnAllDesktops()) state |= WNCK_WINDOW_STATE_STICKY;
+    if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
+    if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
+
+    QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(QSize(width(), height()), active, state);
 
 #if KDE_IS_VERSION(4,3,0)
     // ### fake shadow
     // painter.fillRect(widget()->rect(), QColor(255, 0, 0, 100));
-    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), decoCache);
+    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), decoImage);
 #else
-    painter.drawImage(0, 0, decoCache);
+    painter.drawImage(0, 0, decoImage);
 #endif
 
     painter.setFont(options()->font(active));
