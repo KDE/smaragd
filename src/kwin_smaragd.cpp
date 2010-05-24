@@ -711,6 +711,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     if (cacheState != active || decoCache.size() != QSize(width(), height())) {
         decoCache = decorationImage(QSize(width(), height()), active);
+        cacheState = active;
     }
 
 #if KDE_IS_VERSION(4,3,0)
