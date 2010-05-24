@@ -330,14 +330,12 @@ bool DecorationFactory::supports(Ability ability) const
 
 Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
     : KCommonDecoration(bridge, factory)
+    , cacheState(false)
 {
-    d = (decor_t *) malloc(sizeof(decor_t));
-    bzero(d, sizeof(decor_t));
 }
 
 Decoration::~Decoration()
 {
-    free(d);
 }
 
 QString Decoration::visibleName() const
@@ -379,6 +377,7 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
     }
 
     int threshold = qAlpha(QRgb(image.pixel(sx + (cornerSize.width() - 1) * xd, sy)));
+    threshold = 1;
     for (int y = 0, ys = sy, yc = cy; y < cornerSize.height(); ++y, ys += yd, yc += yd) {
         for (int x = 0, xs = sx, xc = cx; x < cornerSize.width(); ++x, xs += xd, xc += xd) {
             QRgb pixel = QRgb(image.pixel(xs, ys));
@@ -398,7 +397,10 @@ QRegion Decoration::cornerShape(WindowCorner corner)
         return QRegion();
     }
 
-    QRegion region = findCornerShape(decorationImage(QSize(96, 64), true), corner, QSize(32, 32));
+    if (decoCache.width() < 96 || decoCache.height() < 64) {
+        decoCache = decorationImage(QSize(96, 64), cacheState);
+    }
+    QRegion region = findCornerShape(decoCache, corner, QSize(32, 32));
     switch (corner)
     {
     case WC_TopLeft:
@@ -628,6 +630,13 @@ void Decoration::init()
     widget()->setAutoFillBackground(false);
     widget()->setAttribute(Qt::WA_NoSystemBackground, true);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
+}
+
+QImage Decoration::decorationImage(const QSize &size, bool active)
+{
+    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    decor_t deco, *d = &deco;
+    bzero(d, sizeof(decor_t));
 
     // ### Title objects position and sizes
     d->tobj_pos[0] = 0; // left
@@ -643,11 +652,6 @@ void Decoration::init()
         d->tobj_item_width[i] = 0;
         d->tobj_item_state[i] = 3;
     }
-}
-
-QImage Decoration::decorationImage(const QSize &size, bool active)
-{
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
 
     d->width = size.width();
     d->height = size.height();
@@ -705,13 +709,16 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     bool active = isActive();
     QPainter painter(widget());
 
-    QImage image = decorationImage(QSize(width(), height()), active);
+    if (cacheState != active || decoCache.size() != QSize(width(), height())) {
+        decoCache = decorationImage(QSize(width(), height()), active);
+    }
+
 #if KDE_IS_VERSION(4,3,0)
     // ### fake shadow
     // painter.fillRect(widget()->rect(), QColor(255, 0, 0, 100));
-    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), image);
+    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), decoCache);
 #else
-    painter.drawImage(0, 0, image);
+    painter.drawImage(0, 0, decoCache);
 #endif
 
     painter.setFont(options()->font(active));
@@ -723,18 +730,19 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
     const bool respectKWinColors = false;
+    frame_settings *fs = active ? ws->fs_act : ws->fs_inact;
 
     if (respectKWinColors) {
         painter.setPen(QColor(0, 0, 0, 25));
     } else {
-        alpha_color &c = d->fs->text_halo;
+        alpha_color &c = fs->text_halo;
         painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
     }
     painter.drawText(labelRect.adjusted(1, 1, 1, 1), alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
     if (respectKWinColors) {
         painter.setPen(options()->color(ColorFont, active));
     } else {
-        alpha_color &c = d->fs->text;
+        alpha_color &c = fs->text;
         painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
     }
     painter.drawText(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);

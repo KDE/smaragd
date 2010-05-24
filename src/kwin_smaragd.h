@@ -79,7 +79,8 @@ protected:
     QImage decorationImage(const QSize &size, bool active);
 
 private:
-    decor_t *d;
+    QImage decoCache;
+    bool cacheState;
 };
 
 class DecorationButton : public KCommonDecorationButton
