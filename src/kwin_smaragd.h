@@ -28,7 +28,6 @@
 extern "C"
 {
     typedef struct _window_settings window_settings;
-    typedef struct _decor decor_t;
 }
 
 namespace Smaragd

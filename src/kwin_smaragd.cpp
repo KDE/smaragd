@@ -703,6 +703,12 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     bool active = isActive();
     QPainter painter(widget());
 
+    QSize size(widget()->size());
+#if KDE_IS_VERSION(4,3,0)
+    size -= QSize(layoutMetric(LM_OuterPaddingLeft, true) + layoutMetric(LM_OuterPaddingRight, true),
+                  layoutMetric(LM_OuterPaddingTop, true) + layoutMetric(LM_OuterPaddingBottom, true));
+#endif
+
     int state = 0;
 #if 0
     if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
@@ -715,11 +721,28 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
     if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
 
-    QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(QSize(width(), height()), active, state);
+    QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state);
 
 #if KDE_IS_VERSION(4,3,0)
-    // ### fake shadow
-    // painter.fillRect(widget()->rect(), QColor(255, 0, 0, 100));
+#if 0
+    QImage shadowImage(size.width() + 64, size.height() + 64, QImage::Format_ARGB32_Premultiplied);
+    shadowImage.fill(0);
+/*
+    for (int y = 0; y < decoImage.height(); ++y) {
+        for (int x = 0; x < decoImage.width(); ++x) {
+            QRgb pixel = decoImage.pixel(x, y);
+            pixel = qRgba(0, 0, 0, qAlpha(pixel));
+            shadowImage.setPixel(x + 32, y + 32, pixel);
+        }
+    }
+*/
+    QPainter shadowPainter(&shadowImage);
+    shadowPainter.drawImage(32, 32, decoImage);
+    shadowPainter.end();
+    shadowImage = shadowImage.scaled(shadowImage.width() / 8, shadowImage.height() / 8, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    shadowImage = shadowImage.scaled(size.width() + 64, size.height() + 64, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    painter.drawImage(0, 0, shadowImage);
+#endif
     painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), decoImage);
 #else
     painter.drawImage(0, 0, decoImage);
