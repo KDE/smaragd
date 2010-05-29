@@ -749,10 +749,27 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     shadowImage = shadowImage.scaled(size.width() + 64, size.height() + 64, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
     painter.drawImage(0, 0, shadowImage);
 #endif
-    painter.drawImage(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true), decoImage);
+    const int paddingLeft = layoutMetric(LM_OuterPaddingLeft, true);
+    const int paddingTop = layoutMetric(LM_OuterPaddingTop, true);
 #else
-    painter.drawImage(0, 0, decoImage);
+    const int paddingLeft = 0;
+    const int paddingTop = 0;
 #endif
+    QRect outerRect(paddingLeft, paddingTop, size.width(), size.height());
+    QRect innerRect = outerRect.adjusted(layoutMetric(LM_BorderLeft, true), layoutMetric(LM_TitleHeight, true),
+        -layoutMetric(LM_BorderRight, true), -layoutMetric(LM_BorderBottom, true));
+
+    painter.drawImage(outerRect.x(), outerRect.y(), decoImage,
+        0, 0, outerRect.width(), innerRect.y() - outerRect.y());
+    painter.drawImage(outerRect.x(), innerRect.y() + innerRect.height(), decoImage,
+        0, outerRect.height() - (outerRect.bottom() - innerRect.bottom()),
+        outerRect.width(), outerRect.bottom() - innerRect.bottom());
+    painter.drawImage(outerRect.x(), innerRect.y(), decoImage,
+        0, innerRect.y() - outerRect.y(),
+        innerRect.x() - outerRect.x(), innerRect.height());
+    painter.drawImage(innerRect.x() + innerRect.width(), innerRect.y(), decoImage,
+        outerRect.width() - (outerRect.right() - innerRect.right()), innerRect.y() - outerRect.y(),
+        outerRect.right() - innerRect.right(), innerRect.height());
 
     painter.setFont(options()->font(active));
     Qt::Alignment alignment = Qt::AlignHCenter;
