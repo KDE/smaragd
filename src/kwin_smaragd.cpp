@@ -779,6 +779,28 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
     }
     painter.drawText(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
+
+    QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
+    foreach (DecorationButton *button, buttons) {
+        QRect rect = button->geometry();
+
+        int x = 0; //state
+        if (button->isDown()) {
+            x = 2;
+        } else if (button->underMouse()) {
+            x = 1;
+        }
+        if (!active) {
+            x += 3;
+        }
+
+        if (button->type() == MenuButton) {
+            icon().paint(&painter, rect);
+        } else {
+            int y = buttonGlyph(button->type());
+            painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+        }
+    }
 }
 
 
@@ -804,27 +826,7 @@ void DecorationButton::reset(unsigned long /*changed*/)
 
 void DecorationButton::paintEvent(QPaintEvent */* event */)
 {
-    Decoration *deco = static_cast<Decoration *>(decoration());
-    window_settings *ws = (static_cast<DecorationFactory *>(deco->factory()))->windowSettings();
-    QPainter painter(this);
-
-    int x = 0; //state
-    if (isDown()) {
-        x = 2;
-    } else if (underMouse()) {
-        x = 1;
-    }
-    if (!decoration()->isActive()) {
-        x += 3;
-    }
-
-    if (type() == MenuButton) {
-        deco->icon().paint(&painter, rect());
-        return;
-    }
-
-    int y = deco->buttonGlyph(type());
-    painter.drawImage(0, ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+    /* */
 }
 
 }; // namespace Smaragd
