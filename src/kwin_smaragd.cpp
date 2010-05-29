@@ -706,6 +706,7 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
 void Decoration::paintEvent(QPaintEvent */*event */)
 {
     window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
     bool active = isActive();
     QPainter painter(widget());
 
@@ -720,13 +721,16 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
     if (maximizeMode() & MaximizeVertical) state |= WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
 #else
-    if (maximizeMode() == MaximizeFull) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY | WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
+    if (!border) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY | WNCK_WINDOW_STATE_MAXIMIZED_VERTICALLY;
 #endif
     if (isShade()) state |= WNCK_WINDOW_STATE_SHADED;
     if (isOnAllDesktops()) state |= WNCK_WINDOW_STATE_STICKY;
     if (keepAbove()) state |= WNCK_WINDOW_STATE_ABOVE;
     if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
 
+    if (!border) {
+        size += QSize(ws->left_space + ws->right_space + 2 * ws->button_hoffset, 0);
+    }
     QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state);
 
 #if KDE_IS_VERSION(4,3,0)
@@ -759,17 +763,22 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     QRect innerRect = outerRect.adjusted(layoutMetric(LM_BorderLeft, true), layoutMetric(LM_TitleHeight, true),
         -layoutMetric(LM_BorderRight, true), -layoutMetric(LM_BorderBottom, true));
 
-    painter.drawImage(outerRect.x(), outerRect.y(), decoImage,
-        0, 0, outerRect.width(), innerRect.y() - outerRect.y());
-    painter.drawImage(outerRect.x(), innerRect.y() + innerRect.height(), decoImage,
-        0, outerRect.height() - (outerRect.bottom() - innerRect.bottom()),
-        outerRect.width(), outerRect.bottom() - innerRect.bottom());
-    painter.drawImage(outerRect.x(), innerRect.y(), decoImage,
-        0, innerRect.y() - outerRect.y(),
-        innerRect.x() - outerRect.x(), innerRect.height());
-    painter.drawImage(innerRect.x() + innerRect.width(), innerRect.y(), decoImage,
-        outerRect.width() - (outerRect.right() - innerRect.right()), innerRect.y() - outerRect.y(),
-        outerRect.right() - innerRect.right(), innerRect.height());
+    if (border) {
+        painter.drawImage(outerRect.x(), outerRect.y(), decoImage,
+            0, 0, outerRect.width(), innerRect.y() - outerRect.y());
+        painter.drawImage(outerRect.x(), innerRect.y() + innerRect.height(), decoImage,
+            0, outerRect.height() - (outerRect.bottom() - innerRect.bottom()),
+            outerRect.width(), outerRect.bottom() - innerRect.bottom());
+        painter.drawImage(outerRect.x(), innerRect.y(), decoImage,
+            0, innerRect.y() - outerRect.y(),
+            innerRect.x() - outerRect.x(), innerRect.height());
+        painter.drawImage(innerRect.x() + innerRect.width(), innerRect.y(), decoImage,
+            outerRect.width() - (outerRect.right() - innerRect.right()), innerRect.y() - outerRect.y(),
+            outerRect.right() - innerRect.right(), innerRect.height());
+    } else {
+        painter.drawImage(outerRect.x(), outerRect.y(), decoImage,
+            ws->left_space + ws->button_hoffset, 0, outerRect.width(), innerRect.y() - outerRect.y());
+    }
 
     painter.setFont(options()->font(active));
     Qt::Alignment alignment = Qt::AlignHCenter;
