@@ -36,7 +36,7 @@ extern int update_shadow(frame_settings *);
 
 static gint get_b_offset(gint b)
 {
-    static int boffset[B_COUNT+1];
+    int boffset[B_COUNT+1];
     gint i, b_t = 0;
 
     for (i = 0; i < B_COUNT; i++)
@@ -54,7 +54,7 @@ static gint get_b_offset(gint b)
 #if 0 /* ************************ */
 static gint get_b_t_offset(gint b_t)
 {
-    static int btoffset[B_T_COUNT];
+    int btoffset[B_T_COUNT];
     gint i, b = 0;
 
     for (i = 0; i < B_T_COUNT; i++)

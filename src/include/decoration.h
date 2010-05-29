@@ -39,8 +39,8 @@ extern void gdk_color_parse(gchar *s, GdkColor *c);
 extern void g_object_unref(void *x);
 extern int gdk_pixbuf_get_width(GdkPixbuf *pixbuf);
 extern int gdk_pixbuf_get_height(GdkPixbuf *pixbuf);
-extern int gdk_pixbuf_get_colorspace();
-extern int gdk_pixbuf_get_bits_per_sample();
+extern int gdk_pixbuf_get_colorspace(GdkPixbuf *pixbuf);
+extern int gdk_pixbuf_get_bits_per_sample(GdkPixbuf *pixbuf);
 
 typedef enum {
     GDK_COLORSPACE_RGB

@@ -2,13 +2,13 @@
 #define EMERALD_LIBENGINE_H
 #include <emerald.h>
 void copy_from_defaults_if_needed();
-void load_color_setting(GKeyFile * f, decor_color_t * color, gchar * key, gchar * sect);
-void load_shadow_color_setting(GKeyFile * f, gint sc[3], gchar * key, gchar * sect);
-void load_float_setting(GKeyFile * f, gdouble * d, gchar * key, gchar * sect);
-void load_int_setting(GKeyFile * f, gint * i, gchar * key, gchar * sect);
-void load_bool_setting(GKeyFile * f, gboolean * b, gchar * key, gchar * sect);
-void load_font_setting(GKeyFile * f, PangoFontDescription ** fd, gchar * key, gchar * sect);
-void load_string_setting(GKeyFile * f, gchar ** s, gchar * key, gchar * sect);
+void load_color_setting(GKeyFile * f, decor_color_t * color, const gchar * key, const gchar * sect);
+void load_shadow_color_setting(GKeyFile * f, gint sc[3], const gchar * key, const gchar * sect);
+void load_float_setting(GKeyFile * f, gdouble * d, const gchar * key, const gchar * sect);
+void load_int_setting(GKeyFile * f, gint * i, const gchar * key, const gchar * sect);
+void load_bool_setting(GKeyFile * f, gboolean * b, const gchar * key, const gchar * sect);
+void load_font_setting(GKeyFile * f, PangoFontDescription ** fd, const gchar * key, const gchar * sect);
+void load_string_setting(GKeyFile * f, gchar ** s, const gchar * key, const gchar * sect);
 void cairo_set_source_alpha_color(cairo_t * cr, alpha_color * c);
 #define PFACS(zc) \
     load_color_setting(f,&((private_fs *)ws->fs_act->engine_fs)->zc.color,"active_" #zc ,SECT);\
@@ -139,7 +139,7 @@ GSList * get_setting_list();
 const gchar * get_engine_combo(SettingItem * item);
 void do_engine(const gchar * nam);
 GtkWidget * build_notebook_page(gchar * title, GtkWidget * notebook);
-gchar * make_filename(gchar * sect, gchar * key, gchar * ext);
+gchar * make_filename(const gchar * sect, const gchar * key, const gchar * ext);
 void layout_engine_list(GtkWidget * vbox);
 void init_engine_list();
 #endif

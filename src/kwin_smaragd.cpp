@@ -253,12 +253,12 @@ void gdk_pixbuf_scale(GdkPixbuf *source, GdkPixbuf *dest, int x, int y, int w, i
     p.end();
 }
 
-int gdk_pixbuf_get_colorspace()
+int gdk_pixbuf_get_colorspace(GdkPixbuf */*pixbuf*/)
 {
     return GDK_COLORSPACE_RGB;
 }
 
-int gdk_pixbuf_get_bits_per_sample()
+int gdk_pixbuf_get_bits_per_sample(GdkPixbuf */*pixbuf*/)
 {
     return 8;
 }

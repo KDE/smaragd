@@ -33,7 +33,7 @@
 /*
  * pixmap data structs
  */
-static gchar * p_types[]=
+static const gchar * const p_types[]=
 {
     "top",
     "top_left",
@@ -47,7 +47,7 @@ static gchar * p_types[]=
     "title_left",
     "title_right"
 };
-static gchar * names[]={
+static const gchar * const names[]={
     "Top",
     "Top Left",
     "Top Right",
@@ -411,7 +411,7 @@ void load_engine_settings(GKeyFile * f, window_settings * ws)
 {
     private_ws * pws = ws->engine_ws;
     int i;
-    char *pre = "active";
+    const char *pre = "active";
     char *junk;
     PFACS(outer);
     PFACS(inner);

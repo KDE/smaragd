@@ -66,7 +66,7 @@ void copy_from_defaults_if_needed()
 }
 #endif
 
-gchar * make_filename(gchar * sect, gchar * key, gchar * ext)
+gchar * make_filename(const gchar * sect, const gchar * key, const gchar * ext)
 {
     return g_strdup_printf("%s/.emerald/theme/%s.%s.%s",g_get_home_dir(),sect,key,ext);
 }
@@ -74,7 +74,7 @@ void cairo_set_source_alpha_color(cairo_t * cr, alpha_color * c)
 {
     cairo_set_source_rgba(cr,c->color.r,c->color.g,c->color.b,c->alpha);
 }
-void load_color_setting(GKeyFile * f, decor_color_t * color, gchar * key, gchar * sect)
+void load_color_setting(GKeyFile * f, decor_color_t * color, const gchar * key, const gchar * sect)
 {
     GdkColor c;
     gchar * s = g_key_file_get_string(f,sect,key,NULL);
@@ -87,7 +87,7 @@ void load_color_setting(GKeyFile * f, decor_color_t * color, gchar * key, gchar 
         g_free(s);
     }
 }
-void load_shadow_color_setting(GKeyFile * f, gint sc[3], gchar * key, gchar * sect)
+void load_shadow_color_setting(GKeyFile * f, gint sc[3], const gchar * key, const gchar * sect)
 {
     GdkColor c;
     gchar * s = g_key_file_get_string(f,sect,key,NULL);
@@ -100,7 +100,7 @@ void load_shadow_color_setting(GKeyFile * f, gint sc[3], gchar * key, gchar * se
         g_free(s);
     }
 }
-void load_float_setting(GKeyFile * f, gdouble * d, gchar * key, gchar * sect)
+void load_float_setting(GKeyFile * f, gdouble * d, const gchar * key, const gchar * sect)
 {
     gchar * s = g_key_file_get_string(f,sect,key,NULL);
     if (s)
@@ -109,21 +109,21 @@ void load_float_setting(GKeyFile * f, gdouble * d, gchar * key, gchar * sect)
         g_free(s);
     }
 }
-void load_int_setting(GKeyFile * f, gint * i, gchar * key, gchar * sect)
+void load_int_setting(GKeyFile * f, gint * i, const gchar * key, const gchar * sect)
 {
     GError * e = NULL;
     gint ii = g_key_file_get_integer(f,sect,key,&e);
     if (!e)
         *i=ii;
 }
-void load_bool_setting(GKeyFile * f, gboolean * b, gchar * key, gchar * sect)
+void load_bool_setting(GKeyFile * f, gboolean * b, const gchar * key, const gchar * sect)
 {
     GError * e = NULL;
     gboolean bb = g_key_file_get_boolean(f,sect,key,&e);
     if (!e)
         *b=bb;
 }
-void load_font_setting(GKeyFile * f, PangoFontDescription ** fd, gchar * key, gchar * sect)
+void load_font_setting(GKeyFile * f, PangoFontDescription ** fd, const gchar * key, const gchar * sect)
 {
     gchar * s = g_key_file_get_string(f,sect,key,NULL);
     if (s)
@@ -136,7 +136,7 @@ void load_font_setting(GKeyFile * f, PangoFontDescription ** fd, gchar * key, gc
         g_free(s);
     }
 }
-void load_string_setting(GKeyFile * f, gchar ** s, gchar * key, gchar * sect)
+void load_string_setting(GKeyFile * f, gchar ** s, const gchar * key, const gchar * sect)
 {
     gchar * st = g_key_file_get_string(f,sect,key,NULL);
     if (st)
