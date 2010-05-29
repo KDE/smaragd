@@ -644,7 +644,7 @@ void Decoration::init()
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
 }
 
-QImage DecorationFactory::decorationImage(const QSize &size, bool active, int state) const
+QImage DecorationFactory::decorationImage(const QSize &size, bool active, int state, const QRect &titleRect) const
 {
     decor_t deco, *d = &deco;
     bzero(d, sizeof(decor_t));
@@ -675,8 +675,12 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
         ws->normal_top_corner_space + ws->bottom_corner_space +
         ws->bottom_space);
 
-    // ### PangoLayout
-    d->layout = 0;
+    d->tobj_item_state[TBT_TITLE] = 0;
+    d->tobj_item_pos[TBT_TITLE] = titleRect.left() - ws->left_space;
+    PangoLayout pangoLayout;
+    pangoLayout.bounding_width = titleRect.width();
+    pangoLayout.bounding_height = titleRect.height();
+    d->layout = &pangoLayout;
 
     d->state = WnckWindowState(state);
 
@@ -716,6 +720,14 @@ void Decoration::paintEvent(QPaintEvent */*event */)
                   layoutMetric(LM_OuterPaddingTop, true) + layoutMetric(LM_OuterPaddingBottom, true));
 #endif
 
+    painter.setFont(options()->font(active));
+    Qt::Alignment alignment = Qt::AlignHCenter;
+    if (ws->tobj_layout) {
+        alignment = parseTitleAlignment(ws->tobj_layout);
+    }
+    QRect labelRect = titleRect().adjusted(0, 0, 1, 1);
+
+    QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
     int state = 0;
 #if 0
     if (maximizeMode() & MaximizeHorizontal) state |= WNCK_WINDOW_STATE_MAXIMIZED_HORIZONTALLY;
@@ -731,7 +743,11 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     if (!border) {
         size += QSize(ws->left_space + ws->right_space + 2 * ws->button_hoffset, 0);
     }
-    QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state);
+    QRect titleRect = painter.boundingRect(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
+#if KDE_IS_VERSION(4,3,0)
+    titleRect.adjust(-layoutMetric(LM_OuterPaddingLeft, true), 0, -layoutMetric(LM_OuterPaddingLeft, true), 0);
+#endif
+    QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state, titleRect);
 
 #if KDE_IS_VERSION(4,3,0)
 #if 0
@@ -780,14 +796,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             ws->left_space + ws->button_hoffset, 0, outerRect.width(), innerRect.y() - outerRect.y());
     }
 
-    painter.setFont(options()->font(active));
-    Qt::Alignment alignment = Qt::AlignHCenter;
-    if (ws->tobj_layout) {
-        alignment = parseTitleAlignment(ws->tobj_layout);
-    }
-    QRect labelRect = titleRect().adjusted(0, 0, 1, 1);
-
-    QString text = painter.fontMetrics().elidedText(caption(), Qt::ElideMiddle, labelRect.width());
     const bool respectKWinColors = false;
     frame_settings *fs = active ? ws->fs_act : ws->fs_inact;
 

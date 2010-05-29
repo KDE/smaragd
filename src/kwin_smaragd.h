@@ -47,7 +47,7 @@ public:
 public:
     window_settings *windowSettings() const { return ws; }
     QRegion cornerShape(KCommonDecoration::WindowCorner corner) const;
-    QImage decorationImage(const QSize &size, bool active, int state) const;
+    QImage decorationImage(const QSize &size, bool active, int state, const QRect &titleRect = QRect()) const;
 
 private:
     window_settings *ws; // must be first entry because of inline method to access it
