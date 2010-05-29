@@ -489,15 +489,26 @@ static Qt::Alignment parseTitleAlignment(char *p)
     return Qt::AlignRight;
 }
 
-static QString parseButtonLayout(char *p)
+static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
 {
     QString buttons;
+    int s;
     char c;
 
+    *rightSpace = 0;
     while ((c = *p++)) {
-        switch (c) {
-        case ':':
+        if (c == ':') {
             return buttons;
+        }
+        if ((s = *rightSpace)) {
+            if (s < 100) {
+                while (--s >= 0) {
+                    buttons += '_';
+                }
+            }
+            *rightSpace = 0;
+        }
+        switch (c) {
         case 'H': // B_HELP
             buttons += 'H';
             break;
@@ -529,22 +540,32 @@ static QString parseButtonLayout(char *p)
             buttons += 'S';
             break;
         case '(': {
-            int s = 0;
-            do {
-                c = *p++;
-                if (c >= '0' && c <= '9') {
-                    s = s * 10 + c - '0';
-                }
-            } while (c != ')' && c != 0);
-            if (s < 100) {
-                while (--s >= 0) {
-                    buttons += '_';
-                }
+            bool negative = false;
+            s = 0;
+            if (*p == '-') {
+                negative = true;
+                ++p;
             }
+            while (c = *p, c >= '0' && c <= '9') {
+                s = s * 10 + c - '0';
+                ++p;
+            }
+            if (c == ')') {
+                ++p;
+            }
+            if (negative) {
+                s = -s;
+            }
+            if (leftSpace) {
+                *leftSpace = s;
+                s = 0;
+            }
+            *rightSpace = s;
         }
         default:
             break;
         }
+        leftSpace = 0;
     }
     return buttons;
 }
@@ -555,7 +576,8 @@ QString Decoration::defaultButtonsLeft() const
     if (!ws->tobj_layout) {
         return KDecorationOptions::defaultTitleButtonsLeft();
     }
-    return parseButtonLayout(ws->tobj_layout);
+    int leftSpace = 0, rightSpace = 0;
+    return parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
 }
 
 QString Decoration::defaultButtonsRight() const
@@ -567,13 +589,64 @@ QString Decoration::defaultButtonsRight() const
     char *p = ws->tobj_layout;
     while (*p && *p++ != ':') { }
     while (*p && *p++ != ':') { }
-    return parseButtonLayout(p);
+    int leftSpace = 0, rightSpace = 0;
+    return parseButtonLayout(p, &leftSpace, &rightSpace);
+}
+
+static int titleBorderLeft(window_settings *ws)
+{
+    if (!ws->tobj_layout) {
+        return 2;
+    }
+    int leftSpace = 0, rightSpace = 0;
+    parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
+    return 2 + rightSpace;
+}
+
+static int titleBorderRight(window_settings *ws)
+{
+    if (!ws->tobj_layout) {
+        return 2;
+    }
+    char *p = ws->tobj_layout;
+    while (*p && *p++ != ':') { }
+    while (*p && *p++ != ':') { }
+    int leftSpace = 0, rightSpace = 0;
+    parseButtonLayout(p, &leftSpace, &rightSpace);
+    return 2 + leftSpace;
+}
+
+static int titleEdgeLeft(window_settings *ws)
+{
+    int edge = ws->left_space + ws->button_hoffset;
+
+    if (!ws->tobj_layout) {
+        return edge;
+    }
+    int leftSpace = 0, rightSpace = 0;
+    parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
+    return edge + leftSpace;
+}
+
+static int titleEdgeRight(window_settings *ws)
+{
+    int edge = ws->right_space + ws->button_hoffset;
+
+    if (!ws->tobj_layout) {
+        return edge;
+    }
+    char *p = ws->tobj_layout;
+    while (*p && *p++ != ':') { }
+    while (*p && *p++ != ':') { }
+    int leftSpace = 0, rightSpace = 0;
+    parseButtonLayout(p, &leftSpace, &rightSpace);
+    return edge + rightSpace;
 }
 
 int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCommonDecorationButton *button) const
 {
     window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
-    bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
+    bool border = !respectWindowState || !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
 
     switch (lm) {
     case LM_BorderLeft:
@@ -583,12 +656,13 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     case LM_BorderBottom:
         return border ? ws->bottom_space + ws->bottom_corner_space : 0;
     case LM_TitleBorderLeft:
+        return titleBorderLeft(ws);
     case LM_TitleBorderRight:
-        return 2;
+        return titleBorderRight(ws);
     case LM_TitleEdgeLeft:
-        return border ? ws->left_space + ws->button_hoffset : 0;
+        return border ? titleEdgeLeft(ws) : 0;
     case LM_TitleEdgeRight:
-        return border ? ws->right_space + ws->button_hoffset : 0;
+        return border ? titleEdgeRight(ws) : 0;
     case LM_TitleEdgeTop:
         return 0;
     case LM_TitleEdgeBottom:
@@ -741,12 +815,15 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     if (keepBelow()) state |= WNCK_WINDOW_STATE_BELOW;
 
     if (!border) {
-        size += QSize(ws->left_space + ws->right_space + 2 * ws->button_hoffset, 0);
+        size += QSize(layoutMetric(LM_TitleEdgeLeft, false) + layoutMetric(LM_TitleEdgeRight, false), 0);
     }
     QRect titleRect = painter.boundingRect(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
 #if KDE_IS_VERSION(4,3,0)
     titleRect.adjust(-layoutMetric(LM_OuterPaddingLeft, true), 0, -layoutMetric(LM_OuterPaddingLeft, true), 0);
 #endif
+    if (!border) {
+        titleRect.adjust(layoutMetric(LM_TitleEdgeLeft, false), 0, layoutMetric(LM_TitleEdgeLeft, false), 0);
+    }
     QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state, titleRect);
 
 #if KDE_IS_VERSION(4,3,0)
@@ -793,7 +870,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             outerRect.right() - innerRect.right(), innerRect.height());
     } else {
         painter.drawImage(outerRect.x(), outerRect.y(), decoImage,
-            ws->left_space + ws->button_hoffset, 0, outerRect.width(), innerRect.y() - outerRect.y());
+            layoutMetric(LM_TitleEdgeLeft, false), 0, outerRect.width(), innerRect.y() - outerRect.y());
     }
 
     const bool respectKWinColors = false;
