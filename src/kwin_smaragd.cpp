@@ -316,6 +316,12 @@ DecorationFactory::DecorationFactory()
     update_settings(ws);
 
     QImage decoImage = decorationImage(QSize(96, 64), true, 0);
+    QPainter p(&decoImage);
+    QRect rect(0, 0, 96, 64);
+    rect.adjust(ws->left_space + ws->left_corner_space, ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
+        -(ws->right_space + ws->right_corner_space), -(ws->bottom_space + ws->bottom_corner_space));
+    p.fillRect(rect, Qt::black);
+    p.end();
     for (int corner = 0; corner < 4; ++corner) {
         cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
     }
