@@ -625,7 +625,7 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     case LM_OuterPaddingTop:
     case LM_OuterPaddingRight:
     case LM_OuterPaddingBottom:
-        return 0;
+        return 32;
 #endif
     }
     return KCommonDecoration::layoutMetric(lm, respectWindowState, button);
@@ -816,6 +816,18 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         } else {
             int y = buttonGlyph(button->type());
             painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+            if (button->underMouse()) {
+                QImage image;
+
+                if (active && ws->use_button_glow) {
+                    image = ws->ButtonGlowPix[y]->image;
+                } else if (!active && ws->use_button_inactive_glow) {
+                    image = ws->ButtonInactiveGlowPix[y]->image;
+                }
+                if (!image.isNull()) {
+                    painter.drawImage(rect.x() + (rect.width() - ws->c_glow_size.w) / 2, rect.y() + (rect.height() - ws->c_glow_size.h) / 2 + ws->button_offset, image);
+                }
+            }
         }
     }
 }
@@ -844,6 +856,18 @@ void DecorationButton::reset(unsigned long /*changed*/)
 void DecorationButton::paintEvent(QPaintEvent */* event */)
 {
     /* */
+}
+
+void DecorationButton::enterEvent(QEvent *event)
+{
+    KCommonDecorationButton::enterEvent(event);
+    parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+}
+
+void DecorationButton::leaveEvent(QEvent *event)
+{
+    KCommonDecorationButton::leaveEvent(event);
+    parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
 }
 
 }; // namespace Smaragd

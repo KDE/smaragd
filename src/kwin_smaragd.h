@@ -90,6 +90,8 @@ public:
 
 protected:
     virtual void paintEvent(QPaintEvent *event);
+    virtual void enterEvent(QEvent *event);
+    virtual void leaveEvent(QEvent *event);
 };
 
 }; // namespace Smaragd
