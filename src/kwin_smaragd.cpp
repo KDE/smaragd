@@ -912,17 +912,21 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             if (ws->use_pixmap_buttons) {
                 painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
             }
-            if (button->underMouse()) {
-                QImage image;
+        }
+    }
+    foreach (DecorationButton *button, buttons) {
+        if (button->underMouse() && button->type() != MenuButton) {
+            QRect rect = button->geometry();
+            int y = buttonGlyph(button->type());
+            QImage image;
 
-                if (active && ws->use_button_glow) {
-                    image = ws->ButtonGlowPix[y]->image;
-                } else if (!active && ws->use_button_inactive_glow) {
-                    image = ws->ButtonInactiveGlowPix[y]->image;
-                }
-                if (!image.isNull()) {
-                    painter.drawImage(rect.x() + (rect.width() - ws->c_glow_size.w) / 2, rect.y() + (rect.height() - ws->c_glow_size.h) / 2 + ws->button_offset, image);
-                }
+            if (active && ws->use_button_glow) {
+                image = ws->ButtonGlowPix[y]->image;
+            } else if (!active && ws->use_button_inactive_glow) {
+                image = ws->ButtonInactiveGlowPix[y]->image;
+            }
+            if (!image.isNull()) {
+                painter.drawImage(rect.x() + (rect.width() - ws->c_glow_size.w) / 2, rect.y() + (rect.height() - ws->c_glow_size.h) / 2 + ws->button_offset, image);
             }
         }
     }
