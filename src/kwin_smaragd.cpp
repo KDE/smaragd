@@ -909,7 +909,9 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             icon().paint(&painter, rect);
         } else {
             int y = buttonGlyph(button->type());
-            painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+            if (ws->use_pixmap_buttons) {
+                painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+            }
             if (button->underMouse()) {
                 QImage image;
 
