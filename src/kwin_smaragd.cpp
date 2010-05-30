@@ -39,8 +39,12 @@ extern "C"
 
 void pango_layout_get_pixel_size(PangoLayout *layout, int *pwidth, int *pheight)
 {
-    *pwidth = layout->bounding_width;
-    *pheight = layout->bounding_height;
+    if (pwidth) {
+        *pwidth = layout->bounding_width;
+    }
+    if (pheight) {
+        *pheight = layout->bounding_height;
+    }
 }
 
 void gdk_color_parse(gchar *s, GdkColor *c)
