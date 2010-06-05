@@ -329,6 +329,8 @@ DecorationFactory::DecorationFactory()
     for (int corner = 0; corner < 4; ++corner) {
         cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
     }
+
+    (void) readConfig();
 }
 
 DecorationFactory::~DecorationFactory()
@@ -341,8 +343,19 @@ KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
     return (new Decoration(bridge, this))->decoration();
 }
 
+bool DecorationFactory::readConfig()
+{
+    KConfig configFile(QLatin1String("kwinsmaragdrc"));
+    KConfigGroup configGroup(&configFile, "General");
+
+    m_config.useKWinTextColors = configGroup.readEntry("UseKWinTextColors", false);
+
+    return true;
+}
+
 bool DecorationFactory::reset(unsigned long changed)
 {
+    (void) readConfig();
     resetDecorations(changed);
     return true;
 }
@@ -787,7 +800,9 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
 
 void Decoration::paintEvent(QPaintEvent */*event */)
 {
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
+    DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(factory());
+    window_settings *ws = decorationFactory->windowSettings();
+    const Config *config = decorationFactory->config();
     bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
     bool active = isActive();
     QPainter painter(widget());
@@ -877,17 +892,16 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             layoutMetric(LM_TitleEdgeLeft, false), 0, outerRect.width(), innerRect.y() - outerRect.y());
     }
 
-    const bool respectKWinColors = false;
     frame_settings *fs = active ? ws->fs_act : ws->fs_inact;
 
-    if (respectKWinColors) {
+    if (config->useKWinTextColors) {
         painter.setPen(QColor(0, 0, 0, 25));
     } else {
         alpha_color &c = fs->text_halo;
         painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
     }
     painter.drawText(labelRect.adjusted(1, 1, 1, 1), alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
-    if (respectKWinColors) {
+    if (config->useKWinTextColors) {
         painter.setPen(options()->color(ColorFont, active));
     } else {
         alpha_color &c = fs->text;

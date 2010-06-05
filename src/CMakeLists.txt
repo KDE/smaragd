@@ -34,3 +34,5 @@ install (TARGETS kwin3_smaragd DESTINATION ${PLUGIN_INSTALL_DIR})
 install (FILES smaragd.desktop DESTINATION ${DATA_INSTALL_DIR}/kwin)
 install (FILES smaragd.knsrc DESTINATION ${CONFIG_INSTALL_DIR})
 
+add_subdirectory (config)
+
