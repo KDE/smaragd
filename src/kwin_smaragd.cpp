@@ -32,8 +32,6 @@
 
 #include <cairo.h>
 
-#include "shadowengine.h"
-
 extern "C"
 {
 
@@ -354,10 +352,16 @@ bool DecorationFactory::readConfig()
     m_config.useKWinShadows = configGroup.readEntry("UseKWinShadows", false);
 
     if (!m_config.useKWinShadows) {
-        m_config.shadowRadius = 5;
-        m_config.shadowColor = QColor(0, 0, 0, 180);
+        m_config.shadowSettings.radius = configGroup.readEntry("ShadowRadius", 5);
+        m_config.shadowSettings.color = configGroup.readEntry("ShadowColor", QColor(0, 0, 0));
+        m_config.shadowSettings.color.setAlpha(configGroup.readEntry("ShadowAlpha", 180));
+        m_config.shadowSettings.offsetX = configGroup.readEntry("ShadowOffsetX", 0);
+        m_config.shadowSettings.offsetY = configGroup.readEntry("ShadowOffsetY", 0);
+        m_config.shadowSettings.size = configGroup.readEntry("ShadowSize", -3);
+        m_config.shadowSettings.linearDecay = configGroup.readEntry("ShadowLinearDecay", 1.0);
+        m_config.shadowSettings.exponentialDecay = configGroup.readEntry("ShadowExponentialDecay", 6.0);
 
-        m_config.shadowImage = createShadowImage(m_config.shadowRadius, m_config.shadowColor);
+        m_config.shadowImage = createShadowImage(m_config.shadowSettings);
     }
 
     return true;
@@ -869,7 +873,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
 #if KDE_IS_VERSION(4,3,0)
     if (border && !config->useKWinShadows) {
-        paintShadow(&painter, outerRect, config->shadowImage);
+        paintShadow(&painter, outerRect, config->shadowSettings, config->shadowImage);
     }
 #endif
 

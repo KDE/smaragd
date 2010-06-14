@@ -27,8 +27,20 @@
 namespace Smaragd
 {
 
-QImage createShadowImage(int radius, const QColor &shadowColor);
-void paintShadow(QPainter *p, const QRect &rect, const QImage &shadowImage);
+class ShadowSettings
+{
+public:
+    int radius;
+    QColor color;
+    int offsetX;
+    int offsetY;
+    int size;
+    qreal linearDecay;
+    qreal exponentialDecay;
+};
+
+QImage createShadowImage(const ShadowSettings &settings);
+void paintShadow(QPainter *p, const QRect &rect, const ShadowSettings &settings, const QImage &shadowImage);
 
 }; // namespace Smaragd
 

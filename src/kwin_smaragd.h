@@ -25,6 +25,8 @@
 #include <kcommondecoration.h>
 #include <kdecorationfactory.h>
 
+#include "shadowengine.h"
+
 extern "C"
 {
     typedef struct _window_settings window_settings;
@@ -39,9 +41,7 @@ public:
     bool useKWinTextColors;
     bool useKWinShadows;
 
-    int shadowRadius;
-    QColor shadowColor;
-
+    ShadowSettings shadowSettings;
     QImage shadowImage;
 };
 

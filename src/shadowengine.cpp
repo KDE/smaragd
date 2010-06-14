@@ -28,10 +28,9 @@
 namespace Smaragd
 {
 
-QImage createShadowImage(int radius, const QColor &shadowColor)
+QImage createShadowImage(const ShadowSettings &settings)
 {
-    const int s = 3;
-    radius += 32;
+    const int radius = settings.radius + 32;
     const int size = 2 * radius + 1;
 
     QImage shadowImage(size, size, QImage::Format_ARGB32_Premultiplied);
@@ -40,15 +39,15 @@ QImage createShadowImage(int radius, const QColor &shadowColor)
     QRadialGradient gradient(radius + 0.5, radius + 0.5, radius + 0.5);
     for (qreal v = 0.0; v <= 1.0; v += 1.0 / 64) {
         qreal k;
-        QColor color = shadowColor;
-        if (v * radius < radius - (32.0 - s)) {
+        QColor color = settings.color;
+        if (v * radius < radius - (32.0 + settings.size)) {
             k = 0.0;
         } else {
             qreal x = (radius - 32.0) / radius;
             k = (v - x) / (1.0 - x);
-            k = pow(1.0 - k, 1.0) * exp(-6*k);
+            k = pow(1.0 - k, settings.linearDecay) * exp(-settings.exponentialDecay * k);
         }
-        color.setAlpha(color.alpha() * k);
+        color.setAlpha(qBound(0, qRound(color.alpha() * k), 255));
         gradient.setColorAt(v, color);
     }
 
@@ -63,10 +62,11 @@ QImage createShadowImage(int radius, const QColor &shadowColor)
     return shadowImage;
 }
 
-void paintShadow(QPainter *p, const QRect &r, const QImage &shadowImage)
+void paintShadow(QPainter *p, const QRect &r, const ShadowSettings &settings, const QImage &shadowImage)
 {
-    const int s = 3;
+    const int s = -settings.size;
     QRect rect = r.adjusted(s - 32, s - 32, 32 - s, 32 - s);
+    rect.adjust(settings.offsetX, settings.offsetY, settings.offsetX, settings.offsetY);
     int radius = shadowImage.width() / 2;
 
     // corners
