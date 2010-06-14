@@ -20,6 +20,7 @@ set (smaragd_SOURCES
     kwin_smaragd.cpp
     emerald.c
     main.c
+    shadowengine.cpp
 )
 
 kde4_add_plugin (kwin3_smaragd ${smaragd_SOURCES} ${emerald_engines_SOURCES})

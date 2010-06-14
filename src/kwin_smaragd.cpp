@@ -32,6 +32,8 @@
 
 #include <cairo.h>
 
+#include "shadowengine.h"
+
 extern "C"
 {
 
@@ -315,21 +317,6 @@ DecorationFactory::DecorationFactory()
     : KDecorationFactory()
 {
     ws = create_settings();
-    QFontMetrics fm(options()->font(true));
-    ws->text_height = fm.height();
-    update_settings(ws);
-
-    QImage decoImage = decorationImage(QSize(96, 64), true, 0);
-    QPainter p(&decoImage);
-    QRect rect(0, 0, 96, 64);
-    rect.adjust(ws->left_space + ws->left_corner_space, ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
-        -(ws->right_space + ws->right_corner_space), -(ws->bottom_space + ws->bottom_corner_space));
-    p.fillRect(rect, Qt::black);
-    p.end();
-    for (int corner = 0; corner < 4; ++corner) {
-        cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
-    }
-
     (void) readConfig();
 }
 
@@ -345,10 +332,33 @@ KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
 
 bool DecorationFactory::readConfig()
 {
+    QFontMetrics fm(options()->font(true));
+    ws->text_height = fm.height();
+    update_settings(ws);
+
+    QImage decoImage = decorationImage(QSize(96, 64), true, 0);
+    QPainter p(&decoImage);
+    QRect rect(0, 0, 96, 64);
+    rect.adjust(ws->left_space + ws->left_corner_space, ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
+        -(ws->right_space + ws->right_corner_space), -(ws->bottom_space + ws->bottom_corner_space));
+    p.fillRect(rect, Qt::black);
+    p.end();
+    for (int corner = 0; corner < 4; ++corner) {
+        cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
+    }
+
     KConfig configFile(QLatin1String("kwinsmaragdrc"));
     KConfigGroup configGroup(&configFile, "General");
 
     m_config.useKWinTextColors = configGroup.readEntry("UseKWinTextColors", false);
+    m_config.useKWinShadows = configGroup.readEntry("UseKWinShadows", false);
+
+    if (!m_config.useKWinShadows) {
+        m_config.shadowRadius = 5;
+        m_config.shadowColor = QColor(0, 0, 0, 180);
+
+        m_config.shadowImage = createShadowImage(m_config.shadowRadius, m_config.shadowColor);
+    }
 
     return true;
 }
@@ -376,7 +386,8 @@ bool DecorationFactory::supports(Ability ability) const
     case AbilityButtonShade:
         return true;
 #if KDE_IS_VERSION(4,3,0)
-//    case AbilityProvidesShadow:
+    case AbilityProvidesShadow:
+        return !m_config.useKWinShadows;
     case AbilityUsesAlphaChannel:
         return true;
 #endif
@@ -846,25 +857,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     QImage decoImage = static_cast<DecorationFactory *>(factory())->decorationImage(size, active, state, titleRect);
 
 #if KDE_IS_VERSION(4,3,0)
-#if 0
-    QImage shadowImage(size.width() + 64, size.height() + 64, QImage::Format_ARGB32_Premultiplied);
-    shadowImage.fill(0);
-/*
-    for (int y = 0; y < decoImage.height(); ++y) {
-        for (int x = 0; x < decoImage.width(); ++x) {
-            QRgb pixel = decoImage.pixel(x, y);
-            pixel = qRgba(0, 0, 0, qAlpha(pixel));
-            shadowImage.setPixel(x + 32, y + 32, pixel);
-        }
-    }
-*/
-    QPainter shadowPainter(&shadowImage);
-    shadowPainter.drawImage(32, 32, decoImage);
-    shadowPainter.end();
-    shadowImage = shadowImage.scaled(shadowImage.width() / 8, shadowImage.height() / 8, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    shadowImage = shadowImage.scaled(size.width() + 64, size.height() + 64, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    painter.drawImage(0, 0, shadowImage);
-#endif
     const int paddingLeft = layoutMetric(LM_OuterPaddingLeft, true);
     const int paddingTop = layoutMetric(LM_OuterPaddingTop, true);
 #else
@@ -874,6 +866,12 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     QRect outerRect(paddingLeft, paddingTop, size.width(), size.height());
     QRect innerRect = outerRect.adjusted(layoutMetric(LM_BorderLeft, true), layoutMetric(LM_TitleHeight, true),
         -layoutMetric(LM_BorderRight, true), -layoutMetric(LM_BorderBottom, true));
+
+#if KDE_IS_VERSION(4,3,0)
+    if (border && !config->useKWinShadows) {
+        paintShadow(&painter, outerRect, config->shadowImage);
+    }
+#endif
 
     if (border) {
         painter.drawImage(outerRect.x(), outerRect.y(), decoImage,

@@ -37,6 +37,12 @@ class Config
 {
 public:
     bool useKWinTextColors;
+    bool useKWinShadows;
+
+    int shadowRadius;
+    QColor shadowColor;
+
+    QImage shadowImage;
 };
 
 class DecorationFactory : public KDecorationFactory

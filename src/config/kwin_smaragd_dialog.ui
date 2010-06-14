@@ -18,6 +18,13 @@
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="QCheckBox" name="cm_UseKWinShadows">
+     <property name="text">
+      <string>Use KWin shadow effect settings</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>

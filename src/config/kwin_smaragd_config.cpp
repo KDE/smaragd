@@ -25,6 +25,7 @@
 #include <KDE/KConfigGroup>
 #include <KDE/KGlobal>
 #include <KDE/KLocale>
+#include <kdeversion.h>
 
 extern "C" KDE_EXPORT QObject *allocate_config(KConfig *conf, QWidget *parent)
 {
@@ -41,6 +42,11 @@ Config::Config(KConfig *config, QWidget *parent)
     smaragdConfig = new KConfig(QLatin1String("kwinsmaragdrc"));
     KGlobal::locale()->insertCatalog(QLatin1String("kwin_clients"));
     ui = new ConfigUi(parent);
+#if KDE_IS_VERSION(4,3,0)
+    // allows decoration shadows
+#else
+    ui->cm_UseKWinShadows->hide();
+#endif
     configManager.addWidgets(ui);
     load(KConfigGroup(smaragdConfig, "General"));
     configManager.connectConfigChanged(this, SLOT(slotSelectionChanged()));
