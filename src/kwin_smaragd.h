@@ -87,6 +87,7 @@ public:
     virtual QString defaultButtonsRight() const;
     virtual bool decorationBehaviour(DecorationBehaviour behaviour) const;
     virtual int layoutMetric(LayoutMetric lm, bool respectWindowState = true, const KCommonDecorationButton *button = 0) const;
+    virtual Position mousePosition(const QPoint &point) const;
     virtual QRegion cornerShape(WindowCorner corner);
 
     virtual void init();

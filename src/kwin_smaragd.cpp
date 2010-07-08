@@ -737,6 +737,33 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
     return KCommonDecoration::layoutMetric(lm, respectWindowState, button);
 }
 
+KCommonDecoration::Position Decoration::mousePosition(const QPoint & point) const
+{
+#if KDE_IS_VERSION(4,3,0)
+    const int paddingLeft = layoutMetric(LM_OuterPaddingLeft);
+    const int paddingTop = layoutMetric(LM_OuterPaddingTop);
+#else
+    const int paddingLeft = 0;
+    const int paddingTop = 0;
+#endif
+    const int titleHeight = layoutMetric(LM_TitleHeight);
+    int pos = PositionCenter;
+
+    if (!isShade()) {
+        if (point.x() >= (width() + paddingLeft - qMax(titleHeight, layoutMetric(LM_BorderRight)))) {
+            pos |= PositionRight;
+        } else if (point.x() <= paddingLeft + qMax(titleHeight, layoutMetric(LM_BorderLeft))) {
+            pos |= PositionLeft;
+        }
+        if (point.y() >= (height() + paddingTop - qMax(titleHeight, layoutMetric(LM_BorderBottom)))) {
+            pos |= PositionBottom;
+        } else if (point.y() <= paddingTop + (pos == PositionCenter ? 3 : titleHeight)) {
+            pos |= PositionTop;
+        }
+    }
+    return Position(pos);
+}
+
 KCommonDecorationButton *Decoration::createButton(ButtonType type)
 {
     return new DecorationButton(type, this);
