@@ -800,13 +800,13 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
     d->width = size.width();
     d->height = size.height();
 
-    d->client_width = d->width - (
-        ws->left_space + ws->left_corner_space +
-        ws->right_corner_space + ws->right_space);
-    d->client_height = d->height - (
-        ws->top_space + ws->titlebar_height +
-        ws->normal_top_corner_space + ws->bottom_corner_space +
-        ws->bottom_space);
+    const int left = ws->left_space + ws->left_corner_space;
+    const int top = ws->top_space + ws->titlebar_height + ws->normal_top_corner_space;
+    const int right = ws->right_corner_space + ws->right_space;
+    const int bottom = ws->bottom_corner_space + ws->bottom_space;
+
+    d->client_width = d->width - (left + right);
+    d->client_height = d->height - (top + bottom);
 
     d->tobj_item_state[TBT_TITLE] = 0;
     d->tobj_item_pos[TBT_TITLE] = titleRect.left() - ws->left_space;
@@ -825,7 +825,14 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
     QSize allocSize(cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, size.width()) / 4, size.height());
 
     QImage image(allocSize, QImage::Format_ARGB32_Premultiplied);
-    image.fill(qRgba(0, 0, 0, 0));
+    QPainter painter(&image);
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillRect(QRect(0, 0, d->width, top), Qt::transparent);
+    painter.fillRect(QRect(0, top, left, d->client_height), Qt::transparent);
+    painter.fillRect(QRect(d->width - right, top, right, d->client_height), Qt::transparent);
+    painter.fillRect(QRect(0, d->height - bottom, d->width, bottom), Qt::transparent);
+    painter.end();
+
     cairo_surface_t *surface;
     cairo_t *cr;
 
