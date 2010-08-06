@@ -860,6 +860,7 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     if (hoverProgress >= 1.0 - 0.5 / 256) {
         return hoverImage;
     }
+#ifndef SMARAGD_NO_ANIMATIONS
     QImage result = image;
     QImage over = hoverImage;
     QColor alpha = Qt::black;
@@ -876,6 +877,10 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     p.drawImage(0, 0, over);
     p.end();
     return result;
+#else
+    // silence compiler
+    return image;
+#endif
 }
 
 void Decoration::paintEvent(QPaintEvent */*event */)
