@@ -43,9 +43,10 @@ Config::Config(KConfig *config, QWidget *parent)
     KGlobal::locale()->insertCatalog(QLatin1String("kwin_clients"));
     ui = new ConfigUi(parent);
 #if KDE_IS_VERSION(4,3,0)
-    // allows decoration shadows
+    connect(ui->cm_UseKWinShadows, SIGNAL(toggled(bool)), this, SLOT(setShadowTabDisabled(bool)));
 #else
     ui->cm_UseKWinShadows->hide();
+    ui->tabWidget->removeTab(1);
 #endif
     configManager.addWidgets(ui);
     load(KConfigGroup(smaragdConfig, "General"));

@@ -53,6 +53,7 @@ public Q_SLOTS:
     void load(const KConfigGroup &configGroup);
     void save(KConfigGroup &configGroup);
     void defaults();
+    void setShadowTabDisabled(bool disabled) { ui->tabWidget->setTabEnabled(1, !disabled); }
 
 Q_SIGNALS:
     void changed();
