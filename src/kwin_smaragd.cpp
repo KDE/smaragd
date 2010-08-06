@@ -30,6 +30,10 @@
 #include <QtGui/QPainter>
 #include <QtGui/QBitmap>
 
+#ifndef SMARAGD_NO_ANIMATIONS
+#include <QtCore/QPropertyAnimation>
+#endif
+
 #include <cairo.h>
 
 extern "C"
@@ -350,6 +354,7 @@ bool DecorationFactory::readConfig()
 
     m_config.useKWinTextColors = configGroup.readEntry("UseKWinTextColors", false);
     m_config.useKWinShadows = configGroup.readEntry("UseKWinShadows", false);
+    m_config.hoverDuration = configGroup.readEntry("HoverDuration", 200);
 
     if (!m_config.useKWinShadows) {
         m_config.shadowSettings.radius = configGroup.readEntry("ShadowRadius", 5);
@@ -948,28 +953,41 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
     foreach (DecorationButton *button, buttons) {
         QRect rect = button->geometry();
+        const qreal hoverProgress = button->hoverProgress();
 
         int x = 0; //state
         if (button->isDown()) {
             x = 2;
-        } else if (button->underMouse()) {
-            x = 1;
         }
         if (!active) {
             x += 3;
         }
 
+        painter.setOpacity(1.0);
         if (button->type() == MenuButton) {
             icon().paint(&painter, rect);
         } else {
             int y = buttonGlyph(button->type());
             if (ws->use_pixmap_buttons) {
-                painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+                if (button->isDown()) {
+                    painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+                } else {
+                    if (hoverProgress < 1.0) {
+                        painter.setOpacity(1.0 - hoverProgress);
+                        painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
+                    }
+                    if (hoverProgress > 0.0) {
+                        painter.setOpacity(hoverProgress);
+                        painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + 1 + y * S_COUNT]->image);
+                    }
+                }
             }
         }
     }
     foreach (DecorationButton *button, buttons) {
-        if (button->underMouse() && button->type() != MenuButton) {
+        const qreal hoverProgress = button->hoverProgress();
+
+        if (hoverProgress > 0.0 && button->type() != MenuButton) {
             QRect rect = button->geometry();
             int y = buttonGlyph(button->type());
             QImage image;
@@ -980,6 +998,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
                 image = ws->ButtonInactiveGlowPix[y]->image;
             }
             if (!image.isNull()) {
+                painter.setOpacity(hoverProgress);
                 painter.drawImage(rect.x() + (rect.width() - ws->c_glow_size.w) / 2, rect.y() + (rect.height() - ws->c_glow_size.h) / 2 + ws->button_offset, image);
             }
         }
@@ -989,6 +1008,9 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
 DecorationButton::DecorationButton(ButtonType type, KCommonDecoration *parent)
     : KCommonDecorationButton(type, parent)
+#ifndef SMARAGD_NO_ANIMATIONS
+    , m_hoverProgress(0.0)
+#endif
 {
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAutoFillBackground(false);
@@ -1015,13 +1037,65 @@ void DecorationButton::paintEvent(QPaintEvent */* event */)
 void DecorationButton::enterEvent(QEvent *event)
 {
     KCommonDecorationButton::enterEvent(event);
-    parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+    startHoverAnimation(1.0);
 }
 
 void DecorationButton::leaveEvent(QEvent *event)
 {
     KCommonDecorationButton::leaveEvent(event);
+    startHoverAnimation(0.0);
+}
+
+qreal DecorationButton::hoverProgress() const
+{
+#ifndef SMARAGD_NO_ANIMATIONS
+    return m_hoverProgress;
+#else
+    return underMouse() ? 1.0 : 0.0;
+#endif
+}
+
+#ifndef SMARAGD_NO_ANIMATIONS
+void DecorationButton::setHoverProgress(qreal hoverProgress)
+{
+    if (m_hoverProgress != hoverProgress) {
+        m_hoverProgress = hoverProgress;
+        parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+    }
+}
+#endif
+
+void DecorationButton::startHoverAnimation(qreal endValue)
+{
+#ifndef SMARAGD_NO_ANIMATIONS
+    DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(decoration()->factory());
+    const Config *config = decorationFactory->config();
+    QPropertyAnimation *hoverAnimation = m_hoverAnimation.data();
+
+    if (hoverAnimation) {
+        if (hoverAnimation->endValue() == endValue) {
+            return;
+        }
+        hoverAnimation->stop();
+    } else if (m_hoverProgress != endValue) {
+        if (config->hoverDuration < 10) {
+            setHoverProgress(endValue);
+            return;
+        }
+        hoverAnimation = new QPropertyAnimation(this, "hoverProgress");
+        m_hoverAnimation = hoverAnimation;
+    } else {
+        return;
+    }
+    hoverAnimation->setEasingCurve(QEasingCurve::OutQuad);
+    hoverAnimation->setStartValue(m_hoverProgress);
+    hoverAnimation->setEndValue(endValue);
+    hoverAnimation->setDuration(1 + qRound(config->hoverDuration * qAbs(m_hoverProgress - endValue)));
+    hoverAnimation->start();
+#else
+    Q_UNUSED (endValue);
     parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+#endif
 }
 
 }; // namespace Smaragd

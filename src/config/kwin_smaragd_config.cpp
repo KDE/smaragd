@@ -48,6 +48,10 @@ Config::Config(KConfig *config, QWidget *parent)
     ui->cm_UseKWinShadows->hide();
     ui->tabWidget->removeTab(1);
 #endif
+#if (QT_VERSION < QT_VERSION_CHECK(4, 6, 0))
+    ui->cm_HoverDuration->setEnabled(false);
+    ui->cm_HoverDuration->setToolTip(i18n("Animations require KDE SC 4.4"));
+#endif
     configManager.addWidgets(ui);
     load(KConfigGroup(smaragdConfig, "General"));
     configManager.connectConfigChanged(this, SLOT(slotSelectionChanged()));

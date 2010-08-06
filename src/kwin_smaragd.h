@@ -27,6 +27,14 @@
 
 #include "shadowengine.h"
 
+#if (QT_VERSION < QT_VERSION_CHECK(4, 6, 0))
+#define SMARAGD_NO_ANIMATIONS
+#endif
+
+#ifndef SMARAGD_NO_ANIMATIONS
+class QPropertyAnimation;
+#endif
+
 extern "C"
 {
     typedef struct _window_settings window_settings;
@@ -40,6 +48,7 @@ class Config
 public:
     bool useKWinTextColors;
     bool useKWinShadows;
+    int hoverDuration;
 
     ShadowSettings shadowSettings;
     QImage shadowImage;
@@ -75,7 +84,7 @@ private:
 
 class Decoration : public KCommonDecoration
 {
-Q_OBJECT
+    Q_OBJECT
 
 public:
     Decoration(KDecorationBridge *bridge, KDecorationFactory *factory);
@@ -101,17 +110,35 @@ public:
 
 class DecorationButton : public KCommonDecorationButton
 {
-Q_OBJECT
+    Q_OBJECT
+#ifndef SMARAGD_NO_ANIMATIONS
+    Q_PROPERTY(qreal hoverProgress READ hoverProgress WRITE setHoverProgress);
+#endif
 
 public:
     DecorationButton(ButtonType type, KCommonDecoration *parent);
     virtual ~DecorationButton();
     virtual void reset(unsigned long changed);
 
+    qreal hoverProgress() const;
+
+#ifndef SMARAGD_NO_ANIMATIONS
+    void setHoverProgress(qreal hoverProgress);
+#endif
+
 protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void enterEvent(QEvent *event);
     virtual void leaveEvent(QEvent *event);
+
+private:
+    void startHoverAnimation(qreal endValue);
+
+#ifndef SMARAGD_NO_ANIMATIONS
+private:
+    QWeakPointer<QPropertyAnimation> m_hoverAnimation;
+    qreal m_hoverProgress;
+#endif
 };
 
 }; // namespace Smaragd
