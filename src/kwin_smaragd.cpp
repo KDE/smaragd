@@ -989,7 +989,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             x += 3;
         }
 
-        painter.setOpacity(1.0);
         if (button->type() == MenuButton) {
             icon().paint(&painter, rect);
         } else {
