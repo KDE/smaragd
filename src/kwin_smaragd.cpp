@@ -852,6 +852,32 @@ QImage DecorationFactory::decorationImage(const QSize &size, bool active, int st
     return image;
 }
 
+static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal hoverProgress)
+{
+    if (hoverProgress <= 0.5 / 256) {
+        return image;
+    }
+    if (hoverProgress >= 1.0 - 0.5 / 256) {
+        return hoverImage;
+    }
+    QImage result = image;
+    QImage over = hoverImage;
+    QColor alpha = Qt::black;
+    alpha.setAlphaF(hoverProgress);
+    QPainter p;
+    p.begin(&over);
+    p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    p.fillRect(image.rect(), alpha);
+    p.end();
+    p.begin(&result);
+    p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    p.fillRect(image.rect(), alpha);
+    p.setCompositionMode(QPainter::CompositionMode_Plus);
+    p.drawImage(0, 0, over);
+    p.end();
+    return result;
+}
+
 void Decoration::paintEvent(QPaintEvent */*event */)
 {
     DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(factory());
@@ -969,18 +995,11 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         } else {
             int y = buttonGlyph(button->type());
             if (ws->use_pixmap_buttons) {
-                if (button->isDown()) {
-                    painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
-                } else {
-                    if (hoverProgress < 1.0) {
-                        painter.setOpacity(1.0 - hoverProgress);
-                        painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + y * S_COUNT]->image);
-                    }
-                    if (hoverProgress > 0.0) {
-                        painter.setOpacity(hoverProgress);
-                        painter.drawImage(rect.x(), rect.y() + ws->button_offset, ws->ButtonPix[x + 1 + y * S_COUNT]->image);
-                    }
+                QImage image = ws->ButtonPix[x + y * S_COUNT]->image;
+                if (!button->isDown()) {
+                    image = hoverImage(image, ws->ButtonPix[x + 1 + y * S_COUNT]->image, hoverProgress);
                 }
+                painter.drawImage(rect.x(), rect.y() + ws->button_offset, image);
             }
         }
     }
