@@ -334,7 +334,7 @@ bool DecorationFactory::readConfig()
     ws->text_height = fm.height();
     update_settings(ws);
 
-    QImage decoImage = decorationImage(QSize(96, 64), true, 0);
+    QImage decoImage = decorationImage(QSize(96, 64), true, 0, QRect(32, 8, 32, 8));
     QPainter p(&decoImage);
     QRect rect(0, 0, 96, 64);
     rect.adjust(ws->left_space + ws->left_corner_space, ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
