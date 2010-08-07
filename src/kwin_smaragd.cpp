@@ -1004,6 +1004,13 @@ void Decoration::paintEvent(QPaintEvent */*event */)
                     image = hoverImage(image, ws->ButtonPix[x + 1 + y * S_COUNT]->image, hoverProgress);
                 }
                 painter.drawImage(rect.x(), rect.y() + ws->button_offset, image);
+            } else {
+#if 0
+                if (!button->isDown && hoverProgress > 0.5) {
+                    x += 1;
+                }
+                draw_button_with_glow_alpha_bstate(d, cr, y, hoverProgress, 0.0, x);
+#endif
             }
         }
     }
@@ -1031,9 +1038,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
 DecorationButton::DecorationButton(ButtonType type, KCommonDecoration *parent)
     : KCommonDecorationButton(type, parent)
-#ifndef SMARAGD_NO_ANIMATIONS
     , m_hoverProgress(0.0)
-#endif
 {
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAutoFillBackground(false);
@@ -1071,14 +1076,9 @@ void DecorationButton::leaveEvent(QEvent *event)
 
 qreal DecorationButton::hoverProgress() const
 {
-#ifndef SMARAGD_NO_ANIMATIONS
     return m_hoverProgress;
-#else
-    return underMouse() ? 1.0 : 0.0;
-#endif
 }
 
-#ifndef SMARAGD_NO_ANIMATIONS
 void DecorationButton::setHoverProgress(qreal hoverProgress)
 {
     if (m_hoverProgress != hoverProgress) {
@@ -1086,7 +1086,6 @@ void DecorationButton::setHoverProgress(qreal hoverProgress)
         parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
     }
 }
-#endif
 
 void DecorationButton::startHoverAnimation(qreal endValue)
 {
@@ -1116,8 +1115,7 @@ void DecorationButton::startHoverAnimation(qreal endValue)
     hoverAnimation->setDuration(1 + qRound(config->hoverDuration * qAbs(m_hoverProgress - endValue)));
     hoverAnimation->start();
 #else
-    Q_UNUSED (endValue);
-    parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+    setHoverProgress(endValue);
 #endif
 }
 

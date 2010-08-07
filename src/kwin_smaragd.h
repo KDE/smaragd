@@ -121,10 +121,7 @@ public:
     virtual void reset(unsigned long changed);
 
     qreal hoverProgress() const;
-
-#ifndef SMARAGD_NO_ANIMATIONS
     void setHoverProgress(qreal hoverProgress);
-#endif
 
 protected:
     virtual void paintEvent(QPaintEvent *event);
@@ -134,11 +131,11 @@ protected:
 private:
     void startHoverAnimation(qreal endValue);
 
-#ifndef SMARAGD_NO_ANIMATIONS
 private:
+#ifndef SMARAGD_NO_ANIMATIONS
     QWeakPointer<QPropertyAnimation> m_hoverAnimation;
-    qreal m_hoverProgress;
 #endif
+    qreal m_hoverProgress;
 };
 
 }; // namespace Smaragd

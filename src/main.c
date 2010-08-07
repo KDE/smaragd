@@ -19,7 +19,7 @@
 
 #define NEED_BUTTON_BISTATES
 #define NEED_BUTTON_STATE_FLAGS
-//#define NEED_BUTTON_ACTIONS
+#define NEED_BUTTON_ACTIONS
 #define NEED_BUTTON_FILE_NAMES
 #include <emerald.h>
 #include <engine.h>
@@ -51,7 +51,7 @@ static gint get_b_offset(gint b)
     }
     return boffset[b];
 }
-#if 0 /* ************************ */
+
 static gint get_b_t_offset(gint b_t)
 {
     int btoffset[B_T_COUNT];
@@ -66,7 +66,7 @@ static gint get_b_t_offset(gint b_t)
     }
     return btoffset[b_t];
 }
-
+#if 0 /* ************************ */
 //window_settings *global_ws;
 static gint get_real_pos(window_settings * ws, gint tobj, decor_t * d)
 {
@@ -266,7 +266,7 @@ static void draw_shadow_background(decor_t * d, cairo_t * cr)
     cairo_rectangle(cr, x2, y2, right, bottom);
     cairo_fill(cr);
 }
-
+#endif
 
 static void draw_help_button(decor_t * d, cairo_t * cr, double s)
 {
@@ -358,7 +358,7 @@ static void draw_min_button(decor_t * d, cairo_t * cr, double s)
 
     cairo_close_path(cr);
 }
-
+#if 0
 typedef void (*draw_proc) (cairo_t * cr);
 static void
 get_button_pos(window_settings * ws, gint b_t,
@@ -368,6 +368,7 @@ get_button_pos(window_settings * ws, gint b_t,
     *ry = y1 + ws->button_offset;
     *rx = get_real_pos(ws, b_t, d);
 }
+#endif
 static void
 button_state_paint(cairo_t * cr,
                    alpha_color * color, alpha_color * color_2, guint state)
@@ -420,12 +421,14 @@ static void
 draw_pixbuf(GdkPixbuf * pixbuf, cairo_t * cr,
             gdouble x, gdouble y, gdouble x2, gdouble y2, gdouble alpha)
 {
+#if 0
     cairo_save(cr);
     cairo_rectangle(cr, x, y, x2-x, y2-y);
     cairo_clip(cr);
     gdk_cairo_set_source_pixbuf(cr, pixbuf, x, y);
     cairo_paint_with_alpha(cr, alpha);
     cairo_restore(cr);
+#endif
 }
 static void
 draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
@@ -513,6 +516,7 @@ draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
                            d->button_states[b_t]);
     }
 }
+#if 0
 static void
 draw_button_with_glow(gint b_t, decor_t * d, cairo_t * cr, gint y1,
                       gboolean with_glow)
