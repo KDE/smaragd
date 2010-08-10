@@ -1027,9 +1027,12 @@ void Decoration::paintEvent(QPaintEvent */*event */)
             } else if (!active && ws->use_button_inactive_glow) {
                 image = ws->ButtonInactiveGlowPix[y]->image;
             }
-            if (!image.isNull()) {
+            if (!image.isNull() && ws->use_pixmap_buttons) {
+                QImage buttonImage = ws->ButtonPix[y * S_COUNT]->image;
                 painter.setOpacity(hoverProgress);
-                painter.drawImage(rect.x() + (rect.width() - ws->c_glow_size.w) / 2, rect.y() + (rect.height() - ws->c_glow_size.h) / 2 + ws->button_offset, image);
+                const int xp = rect.x() + (buttonImage.width() - ws->c_glow_size.w) / 2;
+                const int yp = rect.y() + (buttonImage.height() - ws->c_glow_size.h) / 2;
+                painter.drawImage(xp, yp + ws->button_offset, image);
             }
         }
     }
