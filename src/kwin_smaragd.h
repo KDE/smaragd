@@ -71,6 +71,7 @@ public:
 
     QRegion cornerShape(KCommonDecoration::WindowCorner corner) const;
     QImage decorationImage(const QSize &size, bool active, int state, const QRect &titleRect = QRect()) const;
+    QImage buttonImage(const QSize &size, bool active, int button, int state) const;
 
 private:
     bool readConfig();

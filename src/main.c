@@ -430,7 +430,7 @@ draw_pixbuf(GdkPixbuf * pixbuf, cairo_t * cr,
     cairo_restore(cr);
 #endif
 }
-static void
+void
 draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
                                    gint y1, gdouble button_alpha,
                                    gdouble glow_alpha, int b_state)
@@ -442,6 +442,7 @@ draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
     gdouble glow_x2, glow_y2;   // glow bottom right coordinates
     window_settings *ws = d->fs->ws;
 
+#if 0
     if (b_state < 0)
         b_state = get_b_state(d, b_t);
 
@@ -453,6 +454,7 @@ draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
 
     if (BUTTON_NOT_VISIBLE(d, b_t))
         return;
+#endif
     button_region_t *button_region =
         (d->active ? &d->button_region[b_t] : &d->
          button_region_inact[b_t]);
@@ -488,6 +490,7 @@ draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
     else
     {
         y += 3;
+        x += 1;
         cairo_set_line_width(cr, 2.0);
         cairo_move_to(cr, x, y);
         switch (b)
@@ -513,7 +516,7 @@ draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
                 break;
         }
         button_state_paint(cr, &d->fs->button, &d->fs->button_halo,
-                           d->button_states[b_t]);
+                           b_state);
     }
 }
 #if 0

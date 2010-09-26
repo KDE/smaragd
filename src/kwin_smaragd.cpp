@@ -41,6 +41,10 @@ extern "C"
 
 #include <engine.h>
 
+void draw_button_with_glow_alpha_bstate(gint b_t, decor_t * d, cairo_t * cr,
+                                        gint y1, gdouble button_alpha,
+                                        gdouble glow_alpha, int b_state);
+
 void pango_layout_get_pixel_size(PangoLayout *layout, int *pwidth, int *pheight)
 {
     if (pwidth) {
@@ -533,6 +537,7 @@ static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
     char c;
 
     *rightSpace = 0;
+    *leftSpace = 0;
     while ((c = *p++)) {
         if (c == ':') {
             return buttons;
@@ -613,7 +618,7 @@ QString Decoration::defaultButtonsLeft() const
     if (!ws->tobj_layout) {
         return KDecorationOptions::defaultTitleButtonsLeft();
     }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     return parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
 }
 
@@ -626,7 +631,7 @@ QString Decoration::defaultButtonsRight() const
     char *p = ws->tobj_layout;
     while (*p && *p++ != ':') { }
     while (*p && *p++ != ':') { }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     return parseButtonLayout(p, &leftSpace, &rightSpace);
 }
 
@@ -635,7 +640,7 @@ static int titleBorderLeft(window_settings *ws)
     if (!ws->tobj_layout) {
         return 2;
     }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
     return 2 + rightSpace;
 }
@@ -648,7 +653,7 @@ static int titleBorderRight(window_settings *ws)
     char *p = ws->tobj_layout;
     while (*p && *p++ != ':') { }
     while (*p && *p++ != ':') { }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     parseButtonLayout(p, &leftSpace, &rightSpace);
     return 2 + leftSpace;
 }
@@ -660,7 +665,7 @@ static int titleEdgeLeft(window_settings *ws)
     if (!ws->tobj_layout) {
         return edge;
     }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
     return edge + leftSpace;
 }
@@ -675,7 +680,7 @@ static int titleEdgeRight(window_settings *ws)
     char *p = ws->tobj_layout;
     while (*p && *p++ != ':') { }
     while (*p && *p++ != ':') { }
-    int leftSpace = 0, rightSpace = 0;
+    int leftSpace, rightSpace;
     parseButtonLayout(p, &leftSpace, &rightSpace);
     return edge + rightSpace;
 }
@@ -708,7 +713,7 @@ int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCo
         return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
     case LM_ButtonHeight:
     case LM_ButtonWidth: {
-        if (button->type() == MenuButton) {
+        if (button->type() == MenuButton || !ws->use_pixmap_buttons) {
             if (lm == LM_ButtonWidth) {
                 return 16;
             } else {
@@ -780,6 +785,34 @@ void Decoration::init()
     widget()->setAutoFillBackground(false);
     widget()->setAttribute(Qt::WA_NoSystemBackground, true);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
+}
+
+QImage DecorationFactory::buttonImage(const QSize &size, bool active, int button, int state) const
+{
+    decor_t deco, *d = &deco;
+    bzero(d, sizeof(decor_t));
+
+    d->decorated = true;
+    d->active = active;
+
+    d->fs = active ? ws->fs_act : ws->fs_inact;
+
+    QSize allocSize(cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, size.width()) / 4, size.height());
+
+    QImage image(allocSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(0);
+
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    surface = cairo_image_surface_create_for_data(image.bits(), CAIRO_FORMAT_ARGB32, size.width(), image.height(), image.bytesPerLine());
+    cr = cairo_create(surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    draw_button_with_glow_alpha_bstate(button, d, cr, 0, 1.0, 1.0, state);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+
+    return image;
 }
 
 QImage DecorationFactory::decorationImage(const QSize &size, bool active, int state, const QRect &titleRect) const
@@ -1005,12 +1038,12 @@ void Decoration::paintEvent(QPaintEvent */*event */)
                 }
                 painter.drawImage(rect.x(), rect.y() + ws->button_offset, image);
             } else {
-#if 0
-                if (!button->isDown && hoverProgress > 0.5) {
-                    x += 1;
-                }
-                draw_button_with_glow_alpha_bstate(d, cr, y, hoverProgress, 0.0, x);
-#endif
+                int state = 0;
+                if (button->isDown()) state |= PRESSED_EVENT_WINDOW;
+                if (hoverProgress > 0.5) state |= IN_EVENT_WINDOW;
+                QImage buttonImage = static_cast<DecorationFactory *>(factory())->buttonImage(QSize(16, 16), active, y, state);
+
+                painter.drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
             }
         }
     }
