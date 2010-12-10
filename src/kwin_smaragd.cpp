@@ -25,10 +25,12 @@
 #include <KDE/KConfig>
 #include <KDE/KConfigGroup>
 #include <KDE/KLocale>
+#include <KDE/Plasma/PaintUtils>
 #include <kdeversion.h>
 
-#include <QtGui/QPainter>
 #include <QtGui/QBitmap>
+#include <QtGui/QPainter>
+#include <QtGui/QStyle>
 
 #ifndef SMARAGD_NO_ANIMATIONS
 #include <QtCore/QPropertyAnimation>
@@ -999,20 +1001,19 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     frame_settings *fs = active ? ws->fs_act : ws->fs_inact;
 
-    if (config->useKWinTextColors) {
-        painter.setPen(QColor(0, 0, 0, 25));
-    } else {
+    QColor shadowColor = QColor(0, 0, 0, 255);
+    QColor textColor = options()->color(ColorFont, active);
+    int textHaloXOffset = 1;
+    int textHaloYOffset = 1;
+    int textHaloSize = 2;
+    if (!config->useKWinTextColors) {
         alpha_color &c = fs->text_halo;
-        painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
+        shadowColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
+        c = fs->text;
+        textColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
     }
-    painter.drawText(labelRect.adjusted(1, 1, 1, 1), alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
-    if (config->useKWinTextColors) {
-        painter.setPen(options()->color(ColorFont, active));
-    } else {
-        alpha_color &c = fs->text;
-        painter.setPen(QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha));
-    }
-    painter.drawText(labelRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, text);
+    QPixmap shadowText = Plasma::PaintUtils::shadowText(text, painter.font(), textColor, shadowColor, QPoint(0, 0), 2);
+    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
 
     QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
     foreach (DecorationButton *button, buttons) {

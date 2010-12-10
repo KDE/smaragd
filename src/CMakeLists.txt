@@ -26,6 +26,7 @@ set (smaragd_SOURCES
 kde4_add_plugin (kwin3_smaragd ${smaragd_SOURCES} ${emerald_engines_SOURCES})
 target_link_libraries(kwin3_smaragd
     ${KDE4_KDEUI_LIBS}
+    ${KDE4_PLASMA_LIBS}
     ${CAIRO_LIBRARIES}
     ${GLIB2_LIBRARIES}
     ${KDE4WORKSPACE_KDECORATIONS_LIBS}
