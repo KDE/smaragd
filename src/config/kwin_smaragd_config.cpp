@@ -41,6 +41,7 @@ Config::Config(KConfig *config, QWidget *parent)
     Q_UNUSED(config);
     smaragdConfig = new KConfig(QLatin1String("kwinsmaragdrc"));
     KGlobal::locale()->insertCatalog(QLatin1String("kwin_clients"));
+    KGlobal::locale()->insertCatalog(QLatin1String("kwin3_smaragd"));
     ui = new ConfigUi(parent);
 #if KDE_IS_VERSION(4,3,0)
     connect(ui->cm_UseKWinShadows, SIGNAL(toggled(bool)), this, SLOT(setShadowTabDisabled(bool)));
