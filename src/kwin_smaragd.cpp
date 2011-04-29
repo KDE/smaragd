@@ -410,6 +410,10 @@ bool DecorationFactory::supports(Ability ability) const
 //    case AbilityExtendIntoClientArea:
 //        return true;
 #endif
+#if KDE_IS_VERSION(4,6,0)
+    case AbilityUsesBlurBehind:
+        return true;
+#endif
     default:
         return false;
     }
