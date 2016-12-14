@@ -23,18 +23,30 @@ set (smaragd_SOURCES
     shadowengine.cpp
 )
 
-kde4_add_plugin (kwin3_smaragd ${smaragd_SOURCES} ${emerald_engines_SOURCES})
-target_link_libraries(kwin3_smaragd
-    ${KDE4_KDEUI_LIBS}
-    ${KDE4_PLASMA_LIBS}
-    ${CAIRO_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${KDE4WORKSPACE_KDECORATIONS_LIBS}
+set (smaragd_config_SOURCES
+    config/kwin_smaragd_config.cpp
 )
 
-install (TARGETS kwin3_smaragd DESTINATION ${PLUGIN_INSTALL_DIR})
-install (FILES smaragd.desktop DESTINATION ${DATA_INSTALL_DIR}/kwin)
-install (FILES smaragd.knsrc DESTINATION ${CONFIG_INSTALL_DIR})
+ki18n_wrap_ui (smaragd_config_SOURCES config/kwin_smaragd_dialog.ui)
 
-add_subdirectory (config)
+add_library  (kwin_smaragd MODULE
+    ${smaragd_SOURCES}
+    ${smaragd_config_SOURCES}
+    ${emerald_engines_SOURCES}
+)
+target_link_libraries (kwin_smaragd
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Widgets
+    KF5::ConfigCore
+    KF5::CoreAddons
+    KF5::I18n
+    KF5::WidgetsAddons
+    KDecoration2::KDecoration
+    ${CAIRO_LIBRARIES}
+    ${GLIB2_LIBRARIES}
+)
+
+install (TARGETS kwin_smaragd DESTINATION ${PLUGIN_INSTALL_DIR}/org.kde.kdecoration2)
+install (FILES smaragd.knsrc DESTINATION ${CONFIG_INSTALL_DIR})
 
