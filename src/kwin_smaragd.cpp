@@ -22,19 +22,12 @@
 
 #include "kwin_smaragd.h"
 
-#include <KDE/KConfig>
-#include <KDE/KConfigGroup>
-#include <KDE/KLocale>
-#include <KDE/Plasma/PaintUtils>
-#include <kdeversion.h>
+#include <KConfig>
+#include <KConfigGroup>
 
-#include <QtGui/QBitmap>
-#include <QtGui/QPainter>
-#include <QtGui/QStyle>
-
-#ifndef SMARAGD_NO_ANIMATIONS
-#include <QtCore/QPropertyAnimation>
-#endif
+#include <QBitmap>
+#include <QPainter>
+#include <QPropertyAnimation>
 
 #include <cairo.h>
 
@@ -239,7 +232,7 @@ GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits
 
 GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, GError **/*error*/)
 {
-    QImage image = QImage(QString::fromAscii(file));
+    QImage image = QImage(QString::fromLocal8Bit(file));
 
     if (image.isNull()) {
         return 0;
@@ -278,7 +271,7 @@ int gdk_pixbuf_get_bits_per_sample(GdkPixbuf */*pixbuf*/)
 }
 
 }
-
+#if 0
 extern "C" KDE_EXPORT KDecorationFactory *create_factory()
 {
     return new Smaragd::DecorationFactory();
@@ -1017,7 +1010,7 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         textColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
     }
     QPixmap shadowText = Plasma::PaintUtils::shadowText(text, painter.font(), textColor, shadowColor, QPoint(0, 0), 2);
-    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
+//    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
 
     QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
     foreach (DecorationButton *button, buttons) {
@@ -1161,6 +1154,4 @@ void DecorationButton::startHoverAnimation(qreal endValue)
 }
 
 }; // namespace Smaragd
-
-#include "kwin_smaragd.moc"
-
+#endif

@@ -21,13 +21,10 @@
 
 #include "kwin_smaragd_config.h"
 
-#include <KDE/KConfig>
-#include <KDE/KConfigGroup>
-#include <KDE/KGlobal>
-#include <KDE/KLocale>
-#include <kdeversion.h>
+#include <KConfig>
+#include <KConfigGroup>
 
-extern "C" KDE_EXPORT QObject *allocate_config(KConfig *conf, QWidget *parent)
+extern "C" Q_DECL_EXPORT QObject *allocate_config(KConfig *conf, QWidget *parent)
 {
     return new Smaragd::Config(conf, parent);
 }
@@ -40,19 +37,10 @@ Config::Config(KConfig *config, QWidget *parent)
 {
     Q_UNUSED(config);
     smaragdConfig = new KConfig(QLatin1String("kwinsmaragdrc"));
-    KGlobal::locale()->insertCatalog(QLatin1String("kwin_clients"));
-    KGlobal::locale()->insertCatalog(QLatin1String("kwin3_smaragd"));
+//    KGlobal::locale()->insertCatalog(QLatin1String("kwin_clients"));
+//    KGlobal::locale()->insertCatalog(QLatin1String("kwin3_smaragd"));
     ui = new ConfigUi(parent);
-#if KDE_IS_VERSION(4,3,0)
-    connect(ui->cm_UseKWinShadows, SIGNAL(toggled(bool)), this, SLOT(setShadowTabDisabled(bool)));
-#else
     ui->cm_UseKWinShadows->hide();
-    ui->tabWidget->removeTab(1);
-#endif
-#if (QT_VERSION < QT_VERSION_CHECK(4, 6, 0))
-    ui->cm_HoverDuration->setEnabled(false);
-    ui->cm_HoverDuration->setToolTip(i18n("Animations require KDE SC 4.4"));
-#endif
     configManager.addWidgets(ui);
     load(KConfigGroup(smaragdConfig, "General"));
     configManager.connectConfigChanged(this, SLOT(slotSelectionChanged()));
@@ -91,6 +79,4 @@ void Config::slotSelectionChanged()
 }
 
 }; // namespace Smaragd
-
-#include "kwin_smaragd_config.moc"
 

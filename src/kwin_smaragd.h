@@ -22,18 +22,12 @@
 #ifndef KWIN_SMARAGD_H
 #define KWIN_SMARAGD_H 1
 
-#include <kcommondecoration.h>
-#include <kdecorationfactory.h>
+#include <KDecoration2/Decoration>
+#include <KDecoration2/DecorationButton>
 
 #include "shadowengine.h"
 
-#if (QT_VERSION < QT_VERSION_CHECK(4, 6, 0))
-#define SMARAGD_NO_ANIMATIONS
-#endif
-
-#ifndef SMARAGD_NO_ANIMATIONS
 class QPropertyAnimation;
-#endif
 
 extern "C"
 {
@@ -53,7 +47,7 @@ public:
     ShadowSettings shadowSettings;
     QImage shadowImage;
 };
-
+#if 0
 class DecorationFactory : public KDecorationFactory
 {
 public:
@@ -138,7 +132,7 @@ private:
 #endif
     qreal m_hoverProgress;
 };
-
+#endif
 }; // namespace Smaragd
 
 #endif

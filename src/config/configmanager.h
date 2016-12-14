@@ -22,8 +22,8 @@
 #ifndef CONFIGMANAGER_H
 #define CONFIGMANAGER_H 1
 
-#include <KDE/KConfigGroup>
-#include <QtCore/QMetaProperty>
+#include <KConfigGroup>
+#include <QMetaProperty>
 
 namespace Smaragd
 {
@@ -109,11 +109,10 @@ private:
         }
 
     public:
-        void setValue(const QVariant &value) const;
-        QVariant value() const;
-        void connectValueChanged(QObject *receiver, const char slot[]) const;
-        QString configLabel() const;
-        QString radioLabel() const;
+        inline void setValue(const QVariant &value) const;
+        inline QVariant value() const;
+        inline void connectValueChanged(QObject *receiver, const char slot[]) const;
+        inline QString configLabel() const;
 
     public:
         QWidget *configWidget;
@@ -146,7 +145,7 @@ void ConfigManager::Item::connectValueChanged(QObject *receiver, const char slot
     QMetaProperty property = configWidget->metaObject()->userProperty();
     if (property.hasNotifySignal()) {
         QMetaMethod method = property.notifySignal();
-        QByteArray signalSignature(method.signature());
+        QByteArray signalSignature(method.methodSignature());
         signalSignature.prepend(QSIGNAL_CODE + '0');
         QObject::connect(configWidget, signalSignature.constData(), receiver, slot);
     }
