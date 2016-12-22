@@ -24,7 +24,7 @@ set (smaragd_SOURCES
 )
 
 set (smaragd_config_SOURCES
-    config/kwin_smaragd_config.cpp
+#    config/kwin_smaragd_config.cpp
 )
 
 ki18n_wrap_ui (smaragd_config_SOURCES config/kwin_smaragd_dialog.ui)

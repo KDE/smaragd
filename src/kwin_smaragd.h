@@ -25,6 +25,8 @@
 #include <KDecoration2/Decoration>
 #include <KDecoration2/DecorationButton>
 
+#include <QVariantList>
+
 #include "shadowengine.h"
 
 class QPropertyAnimation;
@@ -47,28 +49,38 @@ public:
     ShadowSettings shadowSettings;
     QImage shadowImage;
 };
-#if 0
-class DecorationFactory : public KDecorationFactory
+
+class Decoration : public KDecoration2::Decoration
+{
+    Q_OBJECT
+
+public:
+    explicit Decoration(QObject *parent = Q_NULLPTR, const QVariantList &args = QVariantList());
+    ~Decoration() Q_DECL_OVERRIDE;
+
+public:
+    void init() Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
+
+private Q_SLOTS:
+    void updateLayout();
+};
+
+class DecorationFactory
 {
 public:
     DecorationFactory();
-    virtual ~DecorationFactory();
-
-public:
-    virtual KDecoration *createDecoration(KDecorationBridge *bridge);
-    virtual bool reset(unsigned long changed);
-    virtual bool supports(Ability ability) const;
+    ~DecorationFactory();
 
 public:
     window_settings *windowSettings() const { return ws; }
     const Config *config() const { return &m_config; }
 
-    QRegion cornerShape(KCommonDecoration::WindowCorner corner) const;
+    QRegion cornerShape(int corner) const;
     QImage decorationImage(const QSize &size, bool active, int state, const QRect &titleRect = QRect()) const;
     QImage buttonImage(const QSize &size, bool active, int button, int state) const;
 
-private:
-    bool readConfig();
+    void setFontHeight(int fontHeight);
 
 private:
     window_settings *ws; // must be first entry because of inline method to access it
@@ -77,6 +89,7 @@ private:
     QRegion cornerRegion[4];
 };
 
+#if 0
 class Decoration : public KCommonDecoration
 {
     Q_OBJECT

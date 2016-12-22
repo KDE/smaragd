@@ -9,9 +9,9 @@
     },
     "org.kde.kdecoration2": {
         "blur": true,
-        "kcmodule": true,
+        "kcmodule": false,
 
-        "themes": true,
+        "themes": false,
         "themeListKeyword": "themes",
         "defaultTheme": "Smaragd"
     }

@@ -22,14 +22,25 @@
 
 #include "kwin_smaragd.h"
 
+#include <KDecoration2/DecoratedClient>
+
 #include <KConfig>
 #include <KConfigGroup>
+#include <KPluginFactory>
+
+#include <QDebug>
+#include <QPaintEngine>
 
 #include <QBitmap>
 #include <QPainter>
 #include <QPropertyAnimation>
 
 #include <cairo.h>
+
+K_PLUGIN_FACTORY_WITH_JSON(SmaragdDecorationFactory,
+    "smaragd.json",
+    registerPlugin<Smaragd::Decoration>();
+)
 
 extern "C"
 {
@@ -271,16 +282,52 @@ int gdk_pixbuf_get_bits_per_sample(GdkPixbuf */*pixbuf*/)
 }
 
 }
-#if 0
-extern "C" KDE_EXPORT KDecorationFactory *create_factory()
-{
-    return new Smaragd::DecorationFactory();
-}
 
 namespace Smaragd
 {
 
-static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
+Decoration::Decoration(QObject *parent, const QVariantList &args)
+    : KDecoration2::Decoration(parent, args)
+{
+}
+
+Decoration::~Decoration()
+{
+}
+
+void Decoration::init()
+{
+    connect(client().data(), &KDecoration2::DecoratedClient::widthChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::heightChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::maximizedChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::shadedChanged, this, &Decoration::updateLayout);
+
+    connect(client().data(), &KDecoration2::DecoratedClient::paletteChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::iconChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::captionChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::activeChanged, this, [this]() { update(); });
+
+    updateLayout();
+}
+
+void Decoration::updateLayout()
+{
+    setBorders(QMargins(8, 32, 8, 8));
+    setTitleBar(QRect(8, 4, size().width() - 2 * 8, borderTop() - 4));
+}
+
+void Decoration::paint(QPainter *painter, const QRect &repaintArea)
+{
+    QRect captionRect(16, 4, size().width() - 2 * 16, 32 - 2 * 4);
+    DecorationFactory factory;
+    factory.setFontHeight(painter->fontMetrics().height());
+    QImage decoImage = factory.decorationImage(size(), client().data()->isActive(), 0, captionRect);
+    painter->drawImage(0, 0, decoImage);
+    QString caption = client().data()->caption();
+    painter->drawText(captionRect, Qt::AlignVCenter, caption);
+}
+
+static QRegion findCornerShape(const QImage &image, int corner, const QSize &maxSize)
 {
     QSize cornerSize = maxSize.boundedTo(image.size());
     QImage cornerImage(cornerSize, QImage::Format_MonoLSB);
@@ -289,12 +336,12 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
     int xd = 1, yd = 1; // scanning direction
     int sx = 0, sy = 0;
     int cx = 0, cy = 0;
-    if (int(corner) & int(KCommonDecoration::WC_TopRight)) {
+    if (corner & 1) {
         xd = -1;
         sx = image.width() - 1;
         cx = cornerImage.width() - 1;
     }
-    if (int(corner) & int (KCommonDecoration::WC_BottomLeft)) {
+    if (corner & 2) {
         yd = -1;
         sy = image.height() - 1;
         cy = cornerImage.height() - 1;
@@ -315,10 +362,8 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
 
 
 DecorationFactory::DecorationFactory()
-    : KDecorationFactory()
 {
     ws = create_settings();
-    (void) readConfig();
 }
 
 DecorationFactory::~DecorationFactory()
@@ -326,15 +371,9 @@ DecorationFactory::~DecorationFactory()
     free(ws);
 }
 
-KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
+void DecorationFactory::setFontHeight(int fontHeight)
 {
-    return (new Decoration(bridge, this))->decoration();
-}
-
-bool DecorationFactory::readConfig()
-{
-    QFontMetrics fm(options()->font(true));
-    ws->text_height = fm.height();
+    ws->text_height = fontHeight;
     update_settings(ws);
 
     QImage decoImage = decorationImage(QSize(96, 64), true, 0, QRect(32, 8, 32, 8));
@@ -345,7 +384,7 @@ bool DecorationFactory::readConfig()
     p.fillRect(rect, Qt::black);
     p.end();
     for (int corner = 0; corner < 4; ++corner) {
-        cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
+        cornerRegion[corner] = findCornerShape(decoImage, corner, QSize(32, 32));
     }
 
     KConfig configFile(QLatin1String("kwinsmaragdrc"));
@@ -367,57 +406,14 @@ bool DecorationFactory::readConfig()
 
         m_config.shadowImage = createShadowImage(m_config.shadowSettings);
     }
-
-    return true;
 }
 
-bool DecorationFactory::reset(unsigned long changed)
+QRegion DecorationFactory::cornerShape(int corner) const
 {
-    (void) readConfig();
-    resetDecorations(changed);
-    return true;
+    return cornerRegion[corner];
 }
 
-bool DecorationFactory::supports(Ability ability) const
-{
-    switch (ability) {
-    case AbilityAnnounceButtons:
-    case AbilityButtonMenu:
-    case AbilityButtonOnAllDesktops:
-    case AbilityButtonSpacer:
-    case AbilityButtonHelp:
-    case AbilityButtonMinimize:
-    case AbilityButtonMaximize:
-    case AbilityButtonClose:
-    case AbilityButtonAboveOthers:
-    case AbilityButtonBelowOthers:
-    case AbilityButtonShade:
-        return true;
-#if KDE_IS_VERSION(4,3,0)
-    case AbilityProvidesShadow:
-        return !m_config.useKWinShadows;
-    case AbilityUsesAlphaChannel:
-        return true;
-#endif
-#if KDE_IS_VERSION(4,4,0)
-//    case AbilityExtendIntoClientArea:
-//        return true;
-#endif
-#if KDE_IS_VERSION(4,6,0)
-    case AbilityUsesBlurBehind:
-        return true;
-#endif
-    default:
-        return false;
-    }
-}
-
-QRegion DecorationFactory::cornerShape(KCommonDecoration::WindowCorner corner) const
-{
-    return cornerRegion[int(corner)];
-}
-
-
+#if 0
 Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
     : KCommonDecoration(bridge, factory)
 {
@@ -785,6 +781,7 @@ void Decoration::init()
     widget()->setAttribute(Qt::WA_NoSystemBackground, true);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
 }
+#endif
 
 QImage DecorationFactory::buttonImage(const QSize &size, bool active, int button, int state) const
 {
@@ -892,7 +889,6 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     if (hoverProgress >= 1.0 - 0.5 / 256) {
         return hoverImage;
     }
-#ifndef SMARAGD_NO_ANIMATIONS
     QImage result = image;
     QImage over = hoverImage;
     QColor alpha = Qt::black;
@@ -909,12 +905,9 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     p.drawImage(0, 0, over);
     p.end();
     return result;
-#else
-    // silence compiler
-    return image;
-#endif
 }
 
+#if 0
 void Decoration::paintEvent(QPaintEvent */*event */)
 {
     DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(factory());
@@ -1152,6 +1145,8 @@ void DecorationButton::startHoverAnimation(qreal endValue)
     setHoverProgress(endValue);
 #endif
 }
+#endif
 
 }; // namespace Smaragd
-#endif
+
+#include "kwin_smaragd.moc"
