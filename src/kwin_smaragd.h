@@ -50,22 +50,6 @@ public:
     QImage shadowImage;
 };
 
-class Decoration : public KDecoration2::Decoration
-{
-    Q_OBJECT
-
-public:
-    explicit Decoration(QObject *parent = Q_NULLPTR, const QVariantList &args = QVariantList());
-    ~Decoration() Q_DECL_OVERRIDE;
-
-public:
-    void init() Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
-
-private Q_SLOTS:
-    void updateLayout();
-};
-
 class DecorationFactory
 {
 public:
@@ -87,6 +71,26 @@ private:
     Config m_config;
 
     QRegion cornerRegion[4];
+};
+
+class Decoration : public KDecoration2::Decoration
+{
+    Q_OBJECT
+
+public:
+    explicit Decoration(QObject *parent = Q_NULLPTR, const QVariantList &args = QVariantList());
+    ~Decoration() Q_DECL_OVERRIDE;
+
+public:
+    DecorationFactory *factory() { return &m_factory; }
+    void init() Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
+
+private Q_SLOTS:
+    void updateLayout();
+
+private:
+    DecorationFactory m_factory;
 };
 
 #if 0

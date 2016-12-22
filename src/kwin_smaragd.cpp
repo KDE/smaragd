@@ -23,6 +23,7 @@
 #include "kwin_smaragd.h"
 
 #include <KDecoration2/DecoratedClient>
+#include <KDecoration2/DecorationSettings>
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -312,16 +313,23 @@ void Decoration::init()
 
 void Decoration::updateLayout()
 {
-    setBorders(QMargins(8, 32, 8, 8));
+    window_settings *ws = factory()->windowSettings();
+    bool horizontalBorders = !client().data()->isMaximizedHorizontally();
+    bool verticalBorders = !client().data()->isMaximizedVertically();
+    factory()->setFontHeight(settings()->fontMetrics().height());
+    setBorders(QMargins(
+        horizontalBorders ? ws->left_space + ws->left_corner_space : 0,
+        ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
+        horizontalBorders ? ws->right_space + ws->right_corner_space : 0,
+        verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
+    ));
     setTitleBar(QRect(8, 4, size().width() - 2 * 8, borderTop() - 4));
 }
 
 void Decoration::paint(QPainter *painter, const QRect &repaintArea)
 {
-    QRect captionRect(16, 4, size().width() - 2 * 16, 32 - 2 * 4);
-    DecorationFactory factory;
-    factory.setFontHeight(painter->fontMetrics().height());
-    QImage decoImage = factory.decorationImage(size(), client().data()->isActive(), 0, captionRect);
+    QRect captionRect(16, 4, size().width() - 2 * 16, borderTop() - 2 * 4);
+    QImage decoImage = factory()->decorationImage(size(), client().data()->isActive(), 0, captionRect);
     painter->drawImage(0, 0, decoImage);
     QString caption = client().data()->caption();
     painter->drawText(captionRect, Qt::AlignVCenter, caption);
