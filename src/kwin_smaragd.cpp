@@ -23,6 +23,7 @@
 #include "kwin_smaragd.h"
 
 #include <KDecoration2/DecoratedClient>
+#include <KDecoration2/DecorationButtonGroup>
 #include <KDecoration2/DecorationSettings>
 
 #include <KConfig>
@@ -308,6 +309,9 @@ void Decoration::init()
     connect(client().data(), &KDecoration2::DecoratedClient::captionChanged, this, [this]() { update(); });
     connect(client().data(), &KDecoration2::DecoratedClient::activeChanged, this, [this]() { update(); });
 
+    window_settings *ws = factory()->windowSettings();
+    parseButtonLayout(ws->tobj_layout);
+
     updateLayout();
 }
 
@@ -324,6 +328,8 @@ void Decoration::updateLayout()
         verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
     ));
     setTitleBar(QRect(8, 4, size().width() - 2 * 8, borderTop() - 4));
+    m_buttonGroup[0]->setPos(QPointF(4, 4));
+    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - 4, 4));
 }
 
 void Decoration::paint(QPainter *painter, const QRect &repaintArea)
@@ -333,6 +339,8 @@ void Decoration::paint(QPainter *painter, const QRect &repaintArea)
     painter->drawImage(0, 0, decoImage);
     QString caption = client().data()->caption();
     painter->drawText(captionRect, Qt::AlignVCenter, caption);
+    m_buttonGroup[0]->paint(painter, repaintArea);
+    m_buttonGroup[2]->paint(painter, repaintArea);
 }
 
 static QRegion findCornerShape(const QImage &image, int corner, const QSize &maxSize)
@@ -476,32 +484,34 @@ QRegion Decoration::cornerShape(WindowCorner corner)
 #endif
     return region;
 }
+#endif
 
 int Decoration::buttonGlyph(KDecoration2::DecorationButtonType type) const
 {
     switch (type) {
-    case ContextHelp:
+    case KDecoration2::DecorationButtonType::ContextHelp:
         return B_HELP;
-    case Maximize:
+    case KDecoration2::DecorationButtonType::Maximize:
         return client().data()->isMaximized() ? B_RESTORE : B_MAXIMIZE;
-    case Minimize:
+    case KDecoration2::DecorationButtonType::Minimize:
         return B_MINIMIZE;
-    case Close:
+    case KDecoration2::DecorationButtonType::Close:
         return B_CLOSE;
-    case Menu:
-    case ApplicationMenu:
+    case KDecoration2::DecorationButtonType::Menu:
+    case KDecoration2::DecorationButtonType::ApplicationMenu:
         return B_MENU;
-    case OnAllDesktops:
+    case KDecoration2::DecorationButtonType::OnAllDesktops:
         return client().data()->isOnAllDesktops() ? B_UNSTICK : B_STICK;
-    case KeepAbove:
+    case KDecoration2::DecorationButtonType::KeepAbove:
         return client().data()->isKeepAbove() ? B_UNABOVE : B_ABOVE;
-    case KeepBelow:
+    case KDecoration2::DecorationButtonType::KeepBelow:
         return client().data()->isKeepBelow() ? B_UNABOVE : B_ABOVE;
-    case Shade:
+    case KDecoration2::DecorationButtonType::Shade:
         return client().data()->isShaded() ? B_UNSHADE : B_SHADE;
-    case Custom:
-        return -1; // spacer
+    case KDecoration2::DecorationButtonType::Custom:
+        break;
     }
+    return -1; // spacer
 }
 
 static inline KDecoration2::DecorationButtonType parseButtonCode(char c)
@@ -553,8 +563,6 @@ static Qt::Alignment parseTitleAlignment(char *p)
 
 void Decoration::parseButtonLayout(char *p)
 {
-    KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
-
     for (int group = 0; group < 3; ++group) {
         m_buttonGroup[group] = new KDecoration2::DecorationButtonGroup(this);
     }
@@ -605,14 +613,16 @@ void Decoration::parseButtonLayout(char *p)
             type = parseButtonCode(c);
             if (type != KDecoration2::DecorationButtonType::Custom) {
                 DecorationButton *button = new DecorationButton(type, this);
+                int w = 16, h = 16;
                 button->setGeometry(QRect(0, 0, w, h));
-                m_buttonGroup[group]->addButton(button));
+                m_buttonGroup[group]->addButton(button);
             }
             break;
         }
     }
 }
 
+#if 0
 static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
 {
     QString buttons;

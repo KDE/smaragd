@@ -29,6 +29,7 @@
 
 #include "shadowengine.h"
 
+namespace KDecoration2 { class DecorationButtonGroup; }
 class QPropertyAnimation;
 
 extern "C"
@@ -86,6 +87,8 @@ public:
     void init() Q_DECL_OVERRIDE;
     void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
 
+    void parseButtonLayout(char *p);
+
 private Q_SLOTS:
     void updateLayout();
 
@@ -94,6 +97,7 @@ public:
 
 private:
     DecorationFactory m_factory;
+    KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
 };
 
 #if 0
