@@ -445,13 +445,8 @@ void Decoration::updateLayout()
         verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
     ));
     setTitleBar(QRect(2, 4, size().width() - 2 * 2, borderTop() - 4));
-    int titleEdgeLeft = horizontalBorders ? ws->left_space + ws->button_hoffset : 0;
-    int titleEdgeRight = horizontalBorders ? ws->right_space + ws->button_hoffset : 0;
-
-    if (horizontalBorders) {
-        titleEdgeLeft += m_titleLeft;
-        titleEdgeRight += m_titleRight;
-    }
+    int titleEdgeLeft = horizontalBorders ? ws->left_space + ws->button_hoffset + m_titleLeft : 0;
+    int titleEdgeRight = horizontalBorders ? ws->right_space + ws->button_hoffset + m_titleRight : 0;
 
     m_buttonGroup[0]->setPos(QPointF(titleEdgeLeft, 0));
     m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - titleEdgeRight, 0));
