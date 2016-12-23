@@ -477,43 +477,61 @@ QRegion Decoration::cornerShape(WindowCorner corner)
     return region;
 }
 
-int Decoration::buttonGlyph(ButtonType type) const
+int Decoration::buttonGlyph(KDecoration2::DecorationButtonType type) const
 {
-    int y;
-
     switch (type) {
-    case HelpButton:
-        y = B_HELP;
-        break;
-    case MaxButton:
-        y = maximizeMode() == MaximizeFull ? B_RESTORE : B_MAXIMIZE;
-        break;
-    case MinButton:
-        y = B_MINIMIZE;
-        break;
-    case CloseButton:
-        y = B_CLOSE;
-        break;
-    case MenuButton:
-        y = B_MENU;
-        break;
-    case OnAllDesktopsButton:
-        y = isOnAllDesktops() ? B_UNSTICK : B_STICK;
-        break;
-    case AboveButton:
-        y = keepAbove() ? B_UNABOVE : B_ABOVE;
-        break;
-    case BelowButton:
-        y = keepBelow() ? B_UNABOVE : B_ABOVE;
-        break;
-    case ShadeButton:
-        y = isShade() ? B_UNSHADE : B_SHADE;
-        break;
-    default:
-        y = B_RESTORE;
-        break;
+    case ContextHelp:
+        return B_HELP;
+    case Maximize:
+        return client().data()->isMaximized() ? B_RESTORE : B_MAXIMIZE;
+    case Minimize:
+        return B_MINIMIZE;
+    case Close:
+        return B_CLOSE;
+    case Menu:
+    case ApplicationMenu:
+        return B_MENU;
+    case OnAllDesktops:
+        return client().data()->isOnAllDesktops() ? B_UNSTICK : B_STICK;
+    case KeepAbove:
+        return client().data()->isKeepAbove() ? B_UNABOVE : B_ABOVE;
+    case KeepBelow:
+        return client().data()->isKeepBelow() ? B_UNABOVE : B_ABOVE;
+    case Shade:
+        return client().data()->isShaded() ? B_UNSHADE : B_SHADE;
+    case Custom:
+        return -1; // spacer
     }
-    return y;
+}
+
+static inline KDecoration2::DecorationButtonType parseButtonCode(char c)
+{
+    switch (c) {
+    case 'H': // B_HELP
+        return KDecoration2::DecorationButtonType::ContextHelp;
+    case 'M':  // B_MENU
+        return KDecoration2::DecorationButtonType::ApplicationMenu;
+    case 'I':
+        return KDecoration2::DecorationButtonType::Menu;
+    case 'N': // B_MINIMIZE
+        return KDecoration2::DecorationButtonType::Minimize;
+    case 'R':
+    case 'X': // B_MAXIMIZE
+        return KDecoration2::DecorationButtonType::Maximize;
+    case 'C': // B_CLOSE
+        return KDecoration2::DecorationButtonType::Close;
+    case 'U':
+    case 'A': // B_ABOVE
+        return KDecoration2::DecorationButtonType::KeepAbove;
+    case 'D': // B_BELOW
+        return KDecoration2::DecorationButtonType::KeepBelow;
+    case 'S': // B_SHADE
+        return KDecoration2::DecorationButtonType::Shade;
+    case 'Y': // B_STICK
+        return KDecoration2::DecorationButtonType::OnAllDesktops;
+    default:
+        return KDecoration2::DecorationButtonType::Custom;
+    }
 }
 
 static Qt::Alignment parseTitleAlignment(char *p)
@@ -531,6 +549,68 @@ static Qt::Alignment parseTitleAlignment(char *p)
         }
     }
     return Qt::AlignRight;
+}
+
+void Decoration::parseButtonLayout(char *p)
+{
+    KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
+
+    for (int group = 0; group < 3; ++group) {
+        m_buttonGroup[group] = new KDecoration2::DecorationButtonGroup(this);
+    }
+
+    KDecoration2::DecorationButtonType type;
+    bool negative;
+    int s;
+    char c;
+
+    int group = 0;
+
+    while ((c = *p++)) {
+        switch (c) {
+        case ':':
+            ++group;
+            if (!(group < 3)) {
+                return;
+            }
+            break;
+        case '(':
+            negative = false;
+            s = 0;
+            if (*p == '-') {
+                negative = true;
+                ++p;
+            }
+            while (c = *p, c >= '0' && c <= '9') {
+                s = s * 10 + c - '0';
+                ++p;
+            }
+            if (c == ')') {
+                ++p;
+            }
+            if (s > 99) {
+                s = 99;
+            }
+            if (negative) {
+                s = -s;
+            }
+            if (s != 0) {
+                DecorationButton *button = new DecorationButton(KDecoration2::DecorationButtonType::Custom, this);
+                button->setAcceptedButtons(Qt::NoButton);
+                button->setGeometry(QRect(0, 0, s, 0));
+                m_buttonGroup[group]->addButton(button);
+            }
+            break;
+        default:
+            type = parseButtonCode(c);
+            if (type != KDecoration2::DecorationButtonType::Custom) {
+                DecorationButton *button = new DecorationButton(type, this);
+                button->setGeometry(QRect(0, 0, w, h));
+                m_buttonGroup[group]->addButton(button));
+            }
+            break;
+        }
+    }
 }
 
 static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
@@ -1069,17 +1149,13 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         }
     }
 }
+#endif
 
-
-DecorationButton::DecorationButton(ButtonType type, KCommonDecoration *parent)
-    : KCommonDecorationButton(type, parent)
+DecorationButton::DecorationButton(KDecoration2::DecorationButtonType type, Decoration *parent)
+    : KDecoration2::DecorationButton(type, parent)
     , m_hoverProgress(0.0)
 {
-    setAttribute(Qt::WA_NoSystemBackground, true);
-    setAutoFillBackground(false);
-    setFocusPolicy(Qt::NoFocus);
-    setAttribute(Qt::WA_OpaquePaintEvent, false);
-    setAttribute(Qt::WA_Hover, true);
+    /* */
 }
 
 DecorationButton::~DecorationButton()
@@ -1087,25 +1163,21 @@ DecorationButton::~DecorationButton()
     /* */
 }
 
-void DecorationButton::reset(unsigned long /*changed*/)
-{
-    /* NOTE: must be implemented, because it is declared pure */
-}
-
-void DecorationButton::paintEvent(QPaintEvent */* event */)
+void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
 {
     /* */
+    painter->fillRect(geometry(), QColor(255, 255, 0, 50 + 200 * m_hoverProgress));
 }
 
-void DecorationButton::enterEvent(QEvent *event)
+void DecorationButton::hoverEnterEvent(QHoverEvent *event)
 {
-    KCommonDecorationButton::enterEvent(event);
+    KDecoration2::DecorationButton::hoverEnterEvent(event);
     startHoverAnimation(1.0);
 }
 
-void DecorationButton::leaveEvent(QEvent *event)
+void DecorationButton::hoverLeaveEvent(QHoverEvent *event)
 {
-    KCommonDecorationButton::leaveEvent(event);
+    KDecoration2::DecorationButton::hoverLeaveEvent(event);
     startHoverAnimation(0.0);
 }
 
@@ -1118,14 +1190,13 @@ void DecorationButton::setHoverProgress(qreal hoverProgress)
 {
     if (m_hoverProgress != hoverProgress) {
         m_hoverProgress = hoverProgress;
-        parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+        decoration()->update(geometry().adjusted(-32, -32, 32, 32).toRect());
     }
 }
 
 void DecorationButton::startHoverAnimation(qreal endValue)
 {
-#ifndef SMARAGD_NO_ANIMATIONS
-    DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(decoration()->factory());
+    DecorationFactory *decorationFactory = static_cast<Decoration *>(decoration().data())->factory();
     const Config *config = decorationFactory->config();
     QPropertyAnimation *hoverAnimation = m_hoverAnimation.data();
 
@@ -1149,11 +1220,7 @@ void DecorationButton::startHoverAnimation(qreal endValue)
     hoverAnimation->setEndValue(endValue);
     hoverAnimation->setDuration(1 + qRound(config->hoverDuration * qAbs(m_hoverProgress - endValue)));
     hoverAnimation->start();
-#else
-    setHoverProgress(endValue);
-#endif
 }
-#endif
 
 }; // namespace Smaragd
 

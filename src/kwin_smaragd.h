@@ -89,6 +89,9 @@ public:
 private Q_SLOTS:
     void updateLayout();
 
+public:
+    int buttonGlyph(KDecoration2::DecorationButtonType type) const;
+
 private:
     DecorationFactory m_factory;
 };
@@ -119,37 +122,32 @@ public:
 public:
     int buttonGlyph(ButtonType type) const;
 };
-
-class DecorationButton : public KCommonDecorationButton
+#endif
+class DecorationButton : public KDecoration2::DecorationButton
 {
     Q_OBJECT
-#ifndef SMARAGD_NO_ANIMATIONS
     Q_PROPERTY(qreal hoverProgress READ hoverProgress WRITE setHoverProgress);
-#endif
 
 public:
-    DecorationButton(ButtonType type, KCommonDecoration *parent);
-    virtual ~DecorationButton();
-    virtual void reset(unsigned long changed);
+    DecorationButton(KDecoration2::DecorationButtonType type, Decoration *parent);
+    ~DecorationButton();
 
     qreal hoverProgress() const;
     void setHoverProgress(qreal hoverProgress);
 
 protected:
-    virtual void paintEvent(QPaintEvent *event);
-    virtual void enterEvent(QEvent *event);
-    virtual void leaveEvent(QEvent *event);
+    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
+    void hoverEnterEvent(QHoverEvent *event) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent(QHoverEvent *event) Q_DECL_OVERRIDE;
 
 private:
     void startHoverAnimation(qreal endValue);
 
 private:
-#ifndef SMARAGD_NO_ANIMATIONS
-    QWeakPointer<QPropertyAnimation> m_hoverAnimation;
-#endif
+    QPointer<QPropertyAnimation> m_hoverAnimation;
     qreal m_hoverProgress;
 };
-#endif
+
 }; // namespace Smaragd
 
 #endif
