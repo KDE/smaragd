@@ -377,6 +377,8 @@ QRegion DecorationFactory::cornerShape(int corner) const
 
 Decoration::Decoration(QObject *parent, const QVariantList &args)
     : KDecoration2::Decoration(parent, args)
+    , m_titleLeft(0)
+    , m_titleRight(0)
 {
 }
 
@@ -399,6 +401,24 @@ void Decoration::init()
     window_settings *ws = factory()->windowSettings();
     factory()->setFontHeight(settings()->fontMetrics().height());
     parseButtonLayout(ws->tobj_layout ? ws->tobj_layout : (char *) "I:T:NXC");
+
+    QVector<QPointer<KDecoration2::DecorationButton>> buttons;
+    buttons = m_buttonGroup[0]->buttons();
+    if (!buttons.isEmpty()) {
+        KDecoration2::DecorationButton *button = buttons.at(0);
+        if (button->type() == KDecoration2::DecorationButtonType::Custom && button->geometry().width() < 0) {
+            m_titleLeft = button->geometry().width();
+            m_buttonGroup[0]->removeButton(button);
+        }
+    }
+    buttons = m_buttonGroup[2]->buttons();
+    if (!buttons.isEmpty()) {
+        KDecoration2::DecorationButton *button = buttons.at(buttons.count() - 1);
+        if (button->type() == KDecoration2::DecorationButtonType::Custom && button->geometry().width() < 0) {
+            m_titleRight = button->geometry().width();
+            m_buttonGroup[2]->removeButton(button);
+        }
+    }
 
     KDecoration2::DecorationShadow *shadow = new KDecoration2::DecorationShadow();
     const Config *config = factory()->config();
@@ -427,6 +447,12 @@ void Decoration::updateLayout()
     setTitleBar(QRect(2, 4, size().width() - 2 * 2, borderTop() - 4));
     int titleEdgeLeft = horizontalBorders ? ws->left_space + ws->button_hoffset : 0;
     int titleEdgeRight = horizontalBorders ? ws->right_space + ws->button_hoffset : 0;
+
+    if (horizontalBorders) {
+        titleEdgeLeft += m_titleLeft;
+        titleEdgeRight += m_titleRight;
+    }
+
     m_buttonGroup[0]->setPos(QPointF(titleEdgeLeft, 0));
     m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - titleEdgeRight, 0));
 }

@@ -98,6 +98,8 @@ public:
 private:
     DecorationFactory m_factory;
     KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
+    int m_titleLeft;
+    int m_titleRight;
 };
 
 class DecorationButton : public KDecoration2::DecorationButton
