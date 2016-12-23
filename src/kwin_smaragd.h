@@ -100,33 +100,6 @@ private:
     KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
 };
 
-#if 0
-class Decoration : public KCommonDecoration
-{
-    Q_OBJECT
-
-public:
-    Decoration(KDecorationBridge *bridge, KDecorationFactory *factory);
-    virtual ~Decoration();
-
-public:
-    virtual QString visibleName() const;
-    virtual QString defaultButtonsLeft() const;
-    virtual QString defaultButtonsRight() const;
-    virtual bool decorationBehaviour(DecorationBehaviour behaviour) const;
-    virtual int layoutMetric(LayoutMetric lm, bool respectWindowState = true, const KCommonDecorationButton *button = 0) const;
-    virtual Position mousePosition(const QPoint &point) const;
-    virtual QRegion cornerShape(WindowCorner corner);
-
-    virtual void init();
-    virtual KCommonDecorationButton *createButton(ButtonType type);
-
-    virtual void paintEvent(QPaintEvent *event);
-
-public:
-    int buttonGlyph(ButtonType type) const;
-};
-#endif
 class DecorationButton : public KDecoration2::DecorationButton
 {
     Q_OBJECT

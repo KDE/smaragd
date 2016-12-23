@@ -40,11 +40,6 @@
 
 #include <cairo.h>
 
-K_PLUGIN_FACTORY_WITH_JSON(SmaragdDecorationFactory,
-    "smaragd.json",
-    registerPlugin<Smaragd::Decoration>();
-)
-
 extern "C"
 {
 
@@ -285,6 +280,11 @@ int gdk_pixbuf_get_bits_per_sample(GdkPixbuf */*pixbuf*/)
 }
 
 }
+
+K_PLUGIN_FACTORY_WITH_JSON(SmaragdDecorationFactory,
+    "smaragd.json",
+    registerPlugin<Smaragd::Decoration>();
+)
 
 namespace Smaragd
 {
