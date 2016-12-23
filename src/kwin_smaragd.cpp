@@ -1105,38 +1105,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
 
     QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
     foreach (DecorationButton *button, buttons) {
-        QRect rect = button->geometry();
-        const qreal hoverProgress = button->hoverProgress();
-
-        int x = 0; //state
-        if (button->isDown()) {
-            x = 2;
-        }
-        if (!active) {
-            x += 3;
-        }
-
-        if (button->type() == MenuButton) {
-            icon().paint(&painter, rect);
-        } else {
-            int y = buttonGlyph(button->type());
-            if (ws->use_pixmap_buttons) {
-                QImage image = ws->ButtonPix[x + y * S_COUNT]->image;
-                if (!button->isDown()) {
-                    image = hoverImage(image, ws->ButtonPix[x + 1 + y * S_COUNT]->image, hoverProgress);
-                }
-                painter.drawImage(rect.x(), rect.y() + ws->button_offset, image);
-            } else {
-                int state = 0;
-                if (button->isDown()) state |= PRESSED_EVENT_WINDOW;
-                if (hoverProgress > 0.5) state |= IN_EVENT_WINDOW;
-                QImage buttonImage = static_cast<DecorationFactory *>(factory())->buttonImage(QSize(16, 16), active, y, state);
-
-                painter.drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
-            }
-        }
-    }
-    foreach (DecorationButton *button, buttons) {
         const qreal hoverProgress = button->hoverProgress();
 
         if (hoverProgress > 0.0 && button->type() != MenuButton) {
@@ -1175,8 +1143,41 @@ DecorationButton::~DecorationButton()
 
 void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
 {
-    /* */
-    painter->fillRect(geometry(), QColor(255, 255, 0, 50 + 200 * m_hoverProgress));
+    Decoration *decoration = static_cast<Decoration *>(KDecoration2::DecorationButton::decoration().data());
+    KDecoration2::DecoratedClient *client = decoration->client().data();
+    DecorationFactory *decorationFactory =decoration->factory();
+    window_settings *ws = decorationFactory->windowSettings();
+    const bool active = client->isActive();
+    const bool down = isPressed();
+    QRect rect = geometry().toRect();
+
+    int state = 0;
+    if (down) {
+        state = 2;
+    }
+    if (!active) {
+        state += 3;
+    }
+
+    if (type() == KDecoration2::DecorationButtonType::Menu) {
+        client->icon().paint(painter, rect);
+    } else {
+        int glyph = decoration->buttonGlyph(type());
+        if (ws->use_pixmap_buttons) {
+            QImage image = ws->ButtonPix[state + glyph * S_COUNT]->image;
+            if (!down) {
+                image = hoverImage(image, ws->ButtonPix[state + 1 + glyph * S_COUNT]->image, m_hoverProgress);
+            }
+            painter->drawImage(rect.x(), rect.y() + ws->button_offset, image);
+        } else {
+            state = 0;
+            if (down) state |= PRESSED_EVENT_WINDOW;
+            if (m_hoverProgress > 0.0) state |= IN_EVENT_WINDOW;
+            QImage buttonImage = decorationFactory->buttonImage(QSize(16, 16), active, glyph, state);
+
+            painter->drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
+        }
+    }
 }
 
 void DecorationButton::hoverEnterEvent(QHoverEvent *event)
