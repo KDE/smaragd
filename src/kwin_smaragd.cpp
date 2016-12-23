@@ -341,6 +341,13 @@ void Decoration::paint(QPainter *painter, const QRect &repaintArea)
     painter->drawText(captionRect, Qt::AlignVCenter, caption);
     m_buttonGroup[0]->paint(painter, repaintArea);
     m_buttonGroup[2]->paint(painter, repaintArea);
+
+    foreach (QPointer<KDecoration2::DecorationButton> button, m_buttonGroup[0]->buttons()) {
+        static_cast<DecorationButton *>(button.data())->paintGlow(painter, repaintArea);
+    }
+    foreach (QPointer<KDecoration2::DecorationButton> button, m_buttonGroup[2]->buttons()) {
+        static_cast<DecorationButton *>(button.data())->paintGlow(painter, repaintArea);
+    }
 }
 
 static QRegion findCornerShape(const QImage &image, int corner, const QSize &maxSize)
@@ -1102,30 +1109,6 @@ void Decoration::paintEvent(QPaintEvent */*event */)
     }
     QPixmap shadowText = Plasma::PaintUtils::shadowText(text, painter.font(), textColor, shadowColor, QPoint(0, 0), 2);
 //    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
-
-    QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
-    foreach (DecorationButton *button, buttons) {
-        const qreal hoverProgress = button->hoverProgress();
-
-        if (hoverProgress > 0.0 && button->type() != MenuButton) {
-            QRect rect = button->geometry();
-            int y = buttonGlyph(button->type());
-            QImage image;
-
-            if (active && ws->use_button_glow) {
-                image = ws->ButtonGlowPix[y]->image;
-            } else if (!active && ws->use_button_inactive_glow) {
-                image = ws->ButtonInactiveGlowPix[y]->image;
-            }
-            if (!image.isNull() && ws->use_pixmap_buttons) {
-                QImage buttonImage = ws->ButtonPix[y * S_COUNT]->image;
-                painter.setOpacity(hoverProgress);
-                const int xp = rect.x() + (buttonImage.width() - ws->c_glow_size.w) / 2;
-                const int yp = rect.y() + (buttonImage.height() - ws->c_glow_size.h) / 2;
-                painter.drawImage(xp, yp + ws->button_offset, image);
-            }
-        }
-    }
 }
 #endif
 
@@ -1176,6 +1159,34 @@ void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
             QImage buttonImage = decorationFactory->buttonImage(QSize(16, 16), active, glyph, state);
 
             painter->drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
+        }
+    }
+}
+
+void DecorationButton::paintGlow(QPainter *painter, const QRect &repaintArea)
+{
+    if (m_hoverProgress > 0.0 && type() != KDecoration2::DecorationButtonType::Menu) {
+        Decoration *decoration = static_cast<Decoration *>(KDecoration2::DecorationButton::decoration().data());
+        KDecoration2::DecoratedClient *client = decoration->client().data();
+        DecorationFactory *decorationFactory =decoration->factory();
+        window_settings *ws = decorationFactory->windowSettings();
+        const bool active = client->isActive();
+
+        QRect rect = geometry().toRect();
+        int glyph = decoration->buttonGlyph(type());
+        QImage image;
+
+        if (active && ws->use_button_glow) {
+            image = ws->ButtonGlowPix[glyph]->image;
+        } else if (!active && ws->use_button_inactive_glow) {
+            image = ws->ButtonInactiveGlowPix[glyph]->image;
+        }
+        if (!image.isNull() && ws->use_pixmap_buttons) {
+            QImage buttonImage = ws->ButtonPix[glyph * S_COUNT]->image;
+            painter->setOpacity(m_hoverProgress);
+            const int xp = rect.x() + (buttonImage.width() - ws->c_glow_size.w) / 2;
+            const int yp = rect.y() + (buttonImage.height() - ws->c_glow_size.h) / 2;
+            painter->drawImage(xp, yp + ws->button_offset, image);
         }
     }
 }

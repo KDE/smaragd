@@ -139,6 +139,8 @@ public:
     qreal hoverProgress() const;
     void setHoverProgress(qreal hoverProgress);
 
+    void paintGlow(QPainter *painter, const QRect &repaintArea);
+
 protected:
     void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
     void hoverEnterEvent(QHoverEvent *event) Q_DECL_OVERRIDE;
