@@ -310,6 +310,7 @@ void Decoration::init()
     connect(client().data(), &KDecoration2::DecoratedClient::activeChanged, this, [this]() { update(); });
 
     window_settings *ws = factory()->windowSettings();
+    factory()->setFontHeight(settings()->fontMetrics().height());
     parseButtonLayout(ws->tobj_layout);
 
     updateLayout();
@@ -328,12 +329,13 @@ void Decoration::updateLayout()
         verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
     ));
     setTitleBar(QRect(8, 4, size().width() - 2 * 8, borderTop() - 4));
-    m_buttonGroup[0]->setPos(QPointF(4, 4));
-    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - 4, 4));
+    m_buttonGroup[0]->setPos(QPointF(4, 0));
+    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - 4, 0));
 }
 
 void Decoration::paint(QPainter *painter, const QRect &repaintArea)
 {
+    painter->setClipRect(repaintArea, Qt::IntersectClip);
     QRect captionRect(16, 4, size().width() - 2 * 16, borderTop() - 2 * 4);
     QImage decoImage = factory()->decorationImage(size(), client().data()->isActive(), 0, captionRect);
     painter->drawImage(0, 0, decoImage);
@@ -620,8 +622,20 @@ void Decoration::parseButtonLayout(char *p)
             type = parseButtonCode(c);
             if (type != KDecoration2::DecorationButtonType::Custom) {
                 DecorationButton *button = new DecorationButton(type, this);
-                int w = 16, h = 16;
-                button->setGeometry(QRect(0, 0, w, h));
+                window_settings *ws = factory()->windowSettings();
+                int width;
+                int height;
+                if (type == KDecoration2::DecorationButtonType::Menu || !ws->use_pixmap_buttons) {
+                    width = 16;
+                    height = ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
+                } else {
+                    GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(type) * S_COUNT];
+                    if (pixbuf) {
+                        width = gdk_pixbuf_get_width(pixbuf);
+                        height = gdk_pixbuf_get_height(pixbuf) + ws->button_offset;
+                    }
+                }
+                button->setGeometry(QRect(0, 0, width, height));
                 m_buttonGroup[group]->addButton(button);
             }
             break;
@@ -1146,6 +1160,9 @@ void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
         client->icon().paint(painter, rect);
     } else {
         int glyph = decoration->buttonGlyph(type());
+        if (glyph == -1) {
+            return;
+        }
         if (ws->use_pixmap_buttons) {
             QImage image = ws->ButtonPix[state + glyph * S_COUNT]->image;
             if (!down) {
@@ -1174,6 +1191,9 @@ void DecorationButton::paintGlow(QPainter *painter, const QRect &repaintArea)
 
         QRect rect = geometry().toRect();
         int glyph = decoration->buttonGlyph(type());
+        if (glyph == -1) {
+            return;
+        }
         QImage image;
 
         if (active && ws->use_button_glow) {
