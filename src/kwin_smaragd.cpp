@@ -328,15 +328,17 @@ void Decoration::updateLayout()
         horizontalBorders ? ws->right_space + ws->right_corner_space : 0,
         verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
     ));
-    setTitleBar(QRect(8, 4, size().width() - 2 * 8, borderTop() - 4));
-    m_buttonGroup[0]->setPos(QPointF(4, 0));
-    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - 4, 0));
+    setTitleBar(QRect(2, 4, size().width() - 2 * 2, borderTop() - 4));
+    int titleEdgeLeft = horizontalBorders ? ws->left_space + ws->button_hoffset : 0;
+    int titleEdgeRight = horizontalBorders ? ws->right_space + ws->button_hoffset : 0;
+    m_buttonGroup[0]->setPos(QPointF(titleEdgeLeft, 0));
+    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - titleEdgeRight, 0));
 }
 
 void Decoration::paint(QPainter *painter, const QRect &repaintArea)
 {
     painter->setClipRect(repaintArea, Qt::IntersectClip);
-    QRect captionRect(16, 4, size().width() - 2 * 16, borderTop() - 2 * 4);
+    QRect captionRect(m_buttonGroup[0]->geometry().right() + 2, 0, m_buttonGroup[2]->geometry().left() - m_buttonGroup[0]->geometry().right() - 4, borderTop());
     QImage decoImage = factory()->decorationImage(size(), client().data()->isActive(), 0, captionRect);
     painter->drawImage(0, 0, decoImage);
     QString caption = client().data()->caption();
@@ -1173,7 +1175,7 @@ void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
         } else {
             state = 0;
             if (down) state |= PRESSED_EVENT_WINDOW;
-            if (m_hoverProgress > 0.0) state |= IN_EVENT_WINDOW;
+            if (isHovered()) state |= IN_EVENT_WINDOW;
             QImage buttonImage = decorationFactory->buttonImage(QSize(16, 16), active, glyph, state);
 
             painter->drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
