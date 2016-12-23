@@ -25,6 +25,7 @@
 #include <KDecoration2/DecoratedClient>
 #include <KDecoration2/DecorationButtonGroup>
 #include <KDecoration2/DecorationSettings>
+#include <KDecoration2/DecorationShadow>
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -313,6 +314,15 @@ void Decoration::init()
     factory()->setFontHeight(settings()->fontMetrics().height());
     parseButtonLayout(ws->tobj_layout);
 
+    KDecoration2::DecorationShadow *shadow = new KDecoration2::DecorationShadow();
+    const Config *config = factory()->config();
+    QImage image = config->shadowImage;
+    shadow->setShadow(image);
+    shadow->setInnerShadowRect(QRect(image.width() / 2, image.height() / 2, 1, 1));
+    int p = 32 + config->shadowSettings.size;
+    shadow->setPadding(QMargins(p, p, p, p));
+    setShadow(QSharedPointer<KDecoration2::DecorationShadow>(shadow));
+
     updateLayout();
 }
 
@@ -338,11 +348,18 @@ void Decoration::updateLayout()
 void Decoration::paint(QPainter *painter, const QRect &repaintArea)
 {
     painter->setClipRect(repaintArea, Qt::IntersectClip);
+
+    QSize decoSize = size();
+    bool horizontalBorders = !client().data()->isMaximizedHorizontally();
+    bool verticalBorders = !client().data()->isMaximizedVertically();
+
     QRect captionRect(m_buttonGroup[0]->geometry().right() + 2, 0, m_buttonGroup[2]->geometry().left() - m_buttonGroup[0]->geometry().right() - 4, borderTop());
     QImage decoImage = factory()->decorationImage(size(), client().data()->isActive(), 0, captionRect);
     painter->drawImage(0, 0, decoImage);
+
     QString caption = client().data()->caption();
     painter->drawText(captionRect, Qt::AlignVCenter, caption);
+
     m_buttonGroup[0]->paint(painter, repaintArea);
     m_buttonGroup[2]->paint(painter, repaintArea);
 
@@ -1185,7 +1202,7 @@ void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
 
 void DecorationButton::paintGlow(QPainter *painter, const QRect &repaintArea)
 {
-    if (m_hoverProgress > 0.0 && type() != KDecoration2::DecorationButtonType::Menu) {
+    if (m_hoverProgress > 0.0 && isVisible() && type() != KDecoration2::DecorationButtonType::Menu) {
         Decoration *decoration = static_cast<Decoration *>(KDecoration2::DecorationButton::decoration().data());
         KDecoration2::DecoratedClient *client = decoration->client().data();
         DecorationFactory *decorationFactory =decoration->factory();
