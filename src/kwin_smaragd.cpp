@@ -398,7 +398,7 @@ void Decoration::init()
 
     window_settings *ws = factory()->windowSettings();
     factory()->setFontHeight(settings()->fontMetrics().height());
-    parseButtonLayout(ws->tobj_layout);
+    parseButtonLayout(ws->tobj_layout ? ws->tobj_layout : (char *) "I:T:NXC");
 
     KDecoration2::DecorationShadow *shadow = new KDecoration2::DecorationShadow();
     const Config *config = factory()->config();
@@ -739,7 +739,11 @@ void Decoration::paint(QPainter *painter, const QRect &repaintArea)
     painter->setPen(shadowColor);
 //    painter->drawText(captionRect.adjusted(1, 1, 1, 1), Qt::AlignVCenter, caption);
     painter->setPen(textColor);
-    painter->drawText(captionRect, Qt::AlignVCenter, caption);
+    Qt::Alignment alignment = Qt::AlignHCenter;
+    if (ws->tobj_layout) {
+        alignment = parseTitleAlignment(ws->tobj_layout);
+    }
+    painter->drawText(captionRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, caption);
 
     m_buttonGroup[0]->paint(painter, repaintArea);
     m_buttonGroup[2]->paint(painter, repaintArea);
