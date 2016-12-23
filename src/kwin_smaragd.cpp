@@ -350,6 +350,7 @@ void Decoration::paint(QPainter *painter, const QRect &repaintArea)
     foreach (QPointer<KDecoration2::DecorationButton> button, m_buttonGroup[2]->buttons()) {
         static_cast<DecorationButton *>(button.data())->paintGlow(painter, repaintArea);
     }
+    painter->setOpacity(1.0);
 }
 
 static QRegion findCornerShape(const QImage &image, int corner, const QSize &maxSize)
@@ -1214,13 +1215,17 @@ void DecorationButton::paintGlow(QPainter *painter, const QRect &repaintArea)
 void DecorationButton::hoverEnterEvent(QHoverEvent *event)
 {
     KDecoration2::DecorationButton::hoverEnterEvent(event);
-    startHoverAnimation(1.0);
+    if (isHovered()) {
+        startHoverAnimation(1.0);
+    }
 }
 
 void DecorationButton::hoverLeaveEvent(QHoverEvent *event)
 {
     KDecoration2::DecorationButton::hoverLeaveEvent(event);
-    startHoverAnimation(0.0);
+    if (!isHovered()) {
+        startHoverAnimation(0.0);
+    }
 }
 
 qreal DecorationButton::hoverProgress() const
@@ -1232,7 +1237,7 @@ void DecorationButton::setHoverProgress(qreal hoverProgress)
 {
     if (m_hoverProgress != hoverProgress) {
         m_hoverProgress = hoverProgress;
-        decoration()->update(geometry().adjusted(-32, -32, 32, 32).toRect());
+        update(geometry().adjusted(-32, -32, 32, 32));
     }
 }
 
