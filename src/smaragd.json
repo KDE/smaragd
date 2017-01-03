@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Name": "Smaragd",
+        "Description": "Emerald window decorations for KWin",
+        "Id": "org.kde.smaragd",
+        "ServiceTypes": [
+            "org.kde.kdecoration2"
+        ]
+    },
+    "org.kde.kdecoration2": {
+        "blur": true,
+        "kcmodule": false,
+
+        "themes": false,
+        "themeListKeyword": "themes",
+        "defaultTheme": "Smaragd"
+    }
+}
+

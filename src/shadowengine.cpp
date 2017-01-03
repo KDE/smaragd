@@ -21,7 +21,7 @@
 
 #include "shadowengine.h"
 
-#include <QtGui/QImage>
+#include <QImage>
 
 #include <cmath>
 

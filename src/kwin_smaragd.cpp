@@ -22,19 +22,21 @@
 
 #include "kwin_smaragd.h"
 
-#include <KDE/KConfig>
-#include <KDE/KConfigGroup>
-#include <KDE/KLocale>
-#include <KDE/Plasma/PaintUtils>
-#include <kdeversion.h>
+#include <KDecoration2/DecoratedClient>
+#include <KDecoration2/DecorationButtonGroup>
+#include <KDecoration2/DecorationSettings>
+#include <KDecoration2/DecorationShadow>
 
-#include <QtGui/QBitmap>
-#include <QtGui/QPainter>
-#include <QtGui/QStyle>
+#include <KConfig>
+#include <KConfigGroup>
+#include <KPluginFactory>
 
-#ifndef SMARAGD_NO_ANIMATIONS
-#include <QtCore/QPropertyAnimation>
-#endif
+#include <QDebug>
+#include <QPaintEngine>
+
+#include <QBitmap>
+#include <QPainter>
+#include <QPropertyAnimation>
 
 #include <cairo.h>
 
@@ -239,7 +241,7 @@ GdkPixbuf *gdk_pixbuf_new(GdkColorspace colorspace, gboolean has_alpha, int bits
 
 GdkPixbuf *gdk_pixbuf_new_from_file(gchar *file, GError **/*error*/)
 {
-    QImage image = QImage(QString::fromAscii(file));
+    QImage image = QImage(QString::fromLocal8Bit(file));
 
     if (image.isNull()) {
         return 0;
@@ -279,15 +281,15 @@ int gdk_pixbuf_get_bits_per_sample(GdkPixbuf */*pixbuf*/)
 
 }
 
-extern "C" KDE_EXPORT KDecorationFactory *create_factory()
-{
-    return new Smaragd::DecorationFactory();
-}
+K_PLUGIN_FACTORY_WITH_JSON(SmaragdDecorationFactory,
+    "smaragd.json",
+    registerPlugin<Smaragd::Decoration>();
+)
 
 namespace Smaragd
 {
 
-static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCorner corner, const QSize &maxSize)
+static QRegion findCornerShape(const QImage &image, int corner, const QSize &maxSize)
 {
     QSize cornerSize = maxSize.boundedTo(image.size());
     QImage cornerImage(cornerSize, QImage::Format_MonoLSB);
@@ -296,12 +298,12 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
     int xd = 1, yd = 1; // scanning direction
     int sx = 0, sy = 0;
     int cx = 0, cy = 0;
-    if (int(corner) & int(KCommonDecoration::WC_TopRight)) {
+    if (corner & 1) {
         xd = -1;
         sx = image.width() - 1;
         cx = cornerImage.width() - 1;
     }
-    if (int(corner) & int (KCommonDecoration::WC_BottomLeft)) {
+    if (corner & 2) {
         yd = -1;
         sy = image.height() - 1;
         cy = cornerImage.height() - 1;
@@ -322,10 +324,8 @@ static QRegion findCornerShape(const QImage &image, KCommonDecoration::WindowCor
 
 
 DecorationFactory::DecorationFactory()
-    : KDecorationFactory()
 {
     ws = create_settings();
-    (void) readConfig();
 }
 
 DecorationFactory::~DecorationFactory()
@@ -333,15 +333,9 @@ DecorationFactory::~DecorationFactory()
     free(ws);
 }
 
-KDecoration *DecorationFactory::createDecoration(KDecorationBridge *bridge)
+void DecorationFactory::setFontHeight(int fontHeight)
 {
-    return (new Decoration(bridge, this))->decoration();
-}
-
-bool DecorationFactory::readConfig()
-{
-    QFontMetrics fm(options()->font(true));
-    ws->text_height = fm.height();
+    ws->text_height = fontHeight;
     update_settings(ws);
 
     QImage decoImage = decorationImage(QSize(96, 64), true, 0, QRect(32, 8, 32, 8));
@@ -352,7 +346,7 @@ bool DecorationFactory::readConfig()
     p.fillRect(rect, Qt::black);
     p.end();
     for (int corner = 0; corner < 4; ++corner) {
-        cornerRegion[corner] = findCornerShape(decoImage, KCommonDecoration::WindowCorner(corner), QSize(32, 32));
+        cornerRegion[corner] = findCornerShape(decoImage, corner, QSize(32, 32));
     }
 
     KConfig configFile(QLatin1String("kwinsmaragdrc"));
@@ -374,59 +368,17 @@ bool DecorationFactory::readConfig()
 
         m_config.shadowImage = createShadowImage(m_config.shadowSettings);
     }
-
-    return true;
 }
 
-bool DecorationFactory::reset(unsigned long changed)
+QRegion DecorationFactory::cornerShape(int corner) const
 {
-    (void) readConfig();
-    resetDecorations(changed);
-    return true;
+    return cornerRegion[corner];
 }
 
-bool DecorationFactory::supports(Ability ability) const
-{
-    switch (ability) {
-    case AbilityAnnounceButtons:
-    case AbilityButtonMenu:
-    case AbilityButtonOnAllDesktops:
-    case AbilityButtonSpacer:
-    case AbilityButtonHelp:
-    case AbilityButtonMinimize:
-    case AbilityButtonMaximize:
-    case AbilityButtonClose:
-    case AbilityButtonAboveOthers:
-    case AbilityButtonBelowOthers:
-    case AbilityButtonShade:
-        return true;
-#if KDE_IS_VERSION(4,3,0)
-    case AbilityProvidesShadow:
-        return !m_config.useKWinShadows;
-    case AbilityUsesAlphaChannel:
-        return true;
-#endif
-#if KDE_IS_VERSION(4,4,0)
-//    case AbilityExtendIntoClientArea:
-//        return true;
-#endif
-#if KDE_IS_VERSION(4,6,0)
-    case AbilityUsesBlurBehind:
-        return true;
-#endif
-    default:
-        return false;
-    }
-}
-
-QRegion DecorationFactory::cornerShape(KCommonDecoration::WindowCorner corner) const
-{
-    return cornerRegion[int(corner)];
-}
-
-
-Decoration::Decoration(KDecorationBridge *bridge, KDecorationFactory *factory)
-    : KCommonDecoration(bridge, factory)
+Decoration::Decoration(QObject *parent, const QVariantList &args)
+    : KDecoration2::Decoration(parent, args)
+    , m_titleLeft(0)
+    , m_titleRight(0)
 {
 }
 
@@ -434,89 +386,128 @@ Decoration::~Decoration()
 {
 }
 
-QString Decoration::visibleName() const
+void Decoration::init()
 {
-    return i18n("Smaragd");
+    connect(client().data(), &KDecoration2::DecoratedClient::widthChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::heightChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::maximizedChanged, this, &Decoration::updateLayout);
+    connect(client().data(), &KDecoration2::DecoratedClient::shadedChanged, this, &Decoration::updateLayout);
+
+    connect(client().data(), &KDecoration2::DecoratedClient::paletteChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::iconChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::captionChanged, this, [this]() { update(); });
+    connect(client().data(), &KDecoration2::DecoratedClient::activeChanged, this, [this]() { update(); });
+
+    window_settings *ws = factory()->windowSettings();
+    factory()->setFontHeight(settings()->fontMetrics().height());
+    parseButtonLayout(ws->tobj_layout ? ws->tobj_layout : (char *) "I:T:NXC");
+
+    QVector<QPointer<KDecoration2::DecorationButton>> buttons;
+    buttons = m_buttonGroup[0]->buttons();
+    if (!buttons.isEmpty()) {
+        KDecoration2::DecorationButton *button = buttons.at(0);
+        if (button->type() == KDecoration2::DecorationButtonType::Custom && button->geometry().width() < 0) {
+            m_titleLeft = button->geometry().width();
+            m_buttonGroup[0]->removeButton(button);
+        }
+    }
+    buttons = m_buttonGroup[2]->buttons();
+    if (!buttons.isEmpty()) {
+        KDecoration2::DecorationButton *button = buttons.at(buttons.count() - 1);
+        if (button->type() == KDecoration2::DecorationButtonType::Custom && button->geometry().width() < 0) {
+            m_titleRight = button->geometry().width();
+            m_buttonGroup[2]->removeButton(button);
+        }
+    }
+
+    KDecoration2::DecorationShadow *shadow = new KDecoration2::DecorationShadow();
+    const Config *config = factory()->config();
+    QImage image = config->shadowImage;
+    shadow->setShadow(image);
+    shadow->setInnerShadowRect(QRect(image.width() / 2, image.height() / 2, 1, 1));
+    int p = 32 + config->shadowSettings.size;
+    shadow->setPadding(QMargins(p, p, p, p));
+    setShadow(QSharedPointer<KDecoration2::DecorationShadow>(shadow));
+
+    updateLayout();
 }
 
-bool Decoration::decorationBehaviour(DecorationBehaviour behaviour) const
+void Decoration::updateLayout()
 {
-    switch (behaviour) {
-    case DB_WindowMask:
-        return true;
-    case DB_MenuClose:
-    case DB_ButtonHide:
-        return true;
-    default:
-        return KCommonDecoration::decorationBehaviour(behaviour);
-    }
+    window_settings *ws = factory()->windowSettings();
+    bool horizontalBorders = !client().data()->isMaximizedHorizontally();
+    bool verticalBorders = !client().data()->isMaximizedVertically();
+    factory()->setFontHeight(settings()->fontMetrics().height());
+    setBorders(QMargins(
+        horizontalBorders ? ws->left_space + ws->left_corner_space : 0,
+        ws->top_space + ws->normal_top_corner_space + ws->titlebar_height,
+        horizontalBorders ? ws->right_space + ws->right_corner_space : 0,
+        verticalBorders ? ws->bottom_space + ws->bottom_corner_space : 0
+    ));
+    setTitleBar(QRect(2, 4, size().width() - 2 * 2, borderTop() - 4));
+    int titleEdgeLeft = horizontalBorders ? ws->left_space + ws->button_hoffset + m_titleLeft : 0;
+    int titleEdgeRight = horizontalBorders ? ws->right_space + ws->button_hoffset + m_titleRight : 0;
+
+    m_buttonGroup[0]->setPos(QPointF(titleEdgeLeft, 0));
+    m_buttonGroup[2]->setPos(QPointF(size().width() - qRound(m_buttonGroup[2]->geometry().width()) - titleEdgeRight, 0));
 }
 
-QRegion Decoration::cornerShape(WindowCorner corner)
+int Decoration::buttonGlyph(KDecoration2::DecorationButtonType type) const
 {
-    bool border = !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
-    if (!border) {
-        return QRegion();
-    }
-
-    QRegion region = static_cast<DecorationFactory *>(factory())->cornerShape(corner);
-    switch (corner)
-    {
-    case WC_TopLeft:
-        break;
-    case WC_TopRight:
-        region.translate(width() - 32, 0);
-        break;
-    case WC_BottomLeft:
-        region.translate(0, height() - 32);
-        break;
-    case WC_BottomRight:
-        region.translate(width() - 32, height() - 32);
-        break;
-    }
-#if KDE_IS_VERSION(4,3,0)
-    region.translate(layoutMetric(LM_OuterPaddingLeft, true), layoutMetric(LM_OuterPaddingTop, true));
-#endif
-    return region;
-}
-
-int Decoration::buttonGlyph(ButtonType type) const
-{
-    int y;
-
     switch (type) {
-    case HelpButton:
-        y = B_HELP;
-        break;
-    case MaxButton:
-        y = maximizeMode() == MaximizeFull ? B_RESTORE : B_MAXIMIZE;
-        break;
-    case MinButton:
-        y = B_MINIMIZE;
-        break;
-    case CloseButton:
-        y = B_CLOSE;
-        break;
-    case MenuButton:
-        y = B_MENU;
-        break;
-    case OnAllDesktopsButton:
-        y = isOnAllDesktops() ? B_UNSTICK : B_STICK;
-        break;
-    case AboveButton:
-        y = keepAbove() ? B_UNABOVE : B_ABOVE;
-        break;
-    case BelowButton:
-        y = keepBelow() ? B_UNABOVE : B_ABOVE;
-        break;
-    case ShadeButton:
-        y = isShade() ? B_UNSHADE : B_SHADE;
-        break;
-    default:
-        y = B_RESTORE;
+    case KDecoration2::DecorationButtonType::ContextHelp:
+        return B_HELP;
+    case KDecoration2::DecorationButtonType::Maximize:
+        return client().data()->isMaximized() ? B_RESTORE : B_MAXIMIZE;
+    case KDecoration2::DecorationButtonType::Minimize:
+        return B_MINIMIZE;
+    case KDecoration2::DecorationButtonType::Close:
+        return B_CLOSE;
+    case KDecoration2::DecorationButtonType::Menu:
+    case KDecoration2::DecorationButtonType::ApplicationMenu:
+        return B_MENU;
+    case KDecoration2::DecorationButtonType::OnAllDesktops:
+        return client().data()->isOnAllDesktops() ? B_UNSTICK : B_STICK;
+    case KDecoration2::DecorationButtonType::KeepAbove:
+        return client().data()->isKeepAbove() ? B_UNABOVE : B_ABOVE;
+    case KDecoration2::DecorationButtonType::KeepBelow:
+        return client().data()->isKeepBelow() ? B_UNABOVE : B_ABOVE;
+    case KDecoration2::DecorationButtonType::Shade:
+        return client().data()->isShaded() ? B_UNSHADE : B_SHADE;
+    case KDecoration2::DecorationButtonType::Custom:
         break;
     }
-    return y;
+    return -1; // spacer
+}
+
+static inline KDecoration2::DecorationButtonType parseButtonCode(char c)
+{
+    switch (c) {
+    case 'H': // B_HELP
+        return KDecoration2::DecorationButtonType::ContextHelp;
+    case 'M':  // B_MENU
+        return KDecoration2::DecorationButtonType::ApplicationMenu;
+    case 'I':
+        return KDecoration2::DecorationButtonType::Menu;
+    case 'N': // B_MINIMIZE
+        return KDecoration2::DecorationButtonType::Minimize;
+    case 'R':
+    case 'X': // B_MAXIMIZE
+        return KDecoration2::DecorationButtonType::Maximize;
+    case 'C': // B_CLOSE
+        return KDecoration2::DecorationButtonType::Close;
+    case 'U':
+    case 'A': // B_ABOVE
+        return KDecoration2::DecorationButtonType::KeepAbove;
+    case 'D': // B_BELOW
+        return KDecoration2::DecorationButtonType::KeepBelow;
+    case 'S': // B_SHADE
+        return KDecoration2::DecorationButtonType::Shade;
+    case 'Y': // B_STICK
+        return KDecoration2::DecorationButtonType::OnAllDesktops;
+    default:
+        return KDecoration2::DecorationButtonType::Custom;
+    }
 }
 
 static Qt::Alignment parseTitleAlignment(char *p)
@@ -536,59 +527,29 @@ static Qt::Alignment parseTitleAlignment(char *p)
     return Qt::AlignRight;
 }
 
-static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
+void Decoration::parseButtonLayout(char *p)
 {
-    QString buttons;
+    for (int group = 0; group < 3; ++group) {
+        m_buttonGroup[group] = new KDecoration2::DecorationButtonGroup(this);
+    }
+
+    KDecoration2::DecorationButtonType type;
+    bool negative;
     int s;
     char c;
 
-    *rightSpace = 0;
-    *leftSpace = 0;
+    int group = 0;
+
     while ((c = *p++)) {
-        if (c == ':') {
-            return buttons;
-        }
-        if ((s = *rightSpace)) {
-            if (s < 100) {
-                while (--s >= 0) {
-                    buttons += '_';
-                }
-            }
-            *rightSpace = 0;
-        }
         switch (c) {
-        case 'H': // B_HELP
-            buttons += 'H';
+        case ':':
+            ++group;
+            if (!(group < 3)) {
+                return;
+            }
             break;
-        case 'M':
-        case 'I': // B_MENU
-            buttons += 'M';
-            break;
-        case 'N': // B_MINIMIZE
-            buttons += 'I';
-            break;
-        case 'R':
-        case 'X': // B_MAXIMIZE
-            buttons += 'A';
-            break;
-        case 'C': // B_CLOSE
-            buttons += 'X';
-            break;
-        case 'U':
-        case 'A': // B_ABOVE
-            buttons += 'F';
-            break;
-        case 'D': // B_BELOW
-            buttons += 'B';
-            break;
-        case 'S': // B_SHADE
-            buttons += 'L';
-            break;
-        case 'Y': // B_STICK
-            buttons += 'S';
-            break;
-        case '(': {
-            bool negative = false;
+        case '(':
+            negative = false;
             s = 0;
             if (*p == '-') {
                 negative = true;
@@ -601,196 +562,42 @@ static QString parseButtonLayout(char *p, int *leftSpace, int *rightSpace)
             if (c == ')') {
                 ++p;
             }
+            if (s > 99) {
+                s = 99;
+            }
             if (negative) {
                 s = -s;
             }
-            if (leftSpace) {
-                *leftSpace = s;
-                s = 0;
+            if (s != 0) {
+                DecorationButton *button = new DecorationButton(KDecoration2::DecorationButtonType::Custom, this);
+                button->setAcceptedButtons(Qt::NoButton);
+                button->setGeometry(QRect(0, 0, s, 0));
+                m_buttonGroup[group]->addButton(button);
             }
-            *rightSpace = s;
-        }
+            break;
         default:
+            type = parseButtonCode(c);
+            if (type != KDecoration2::DecorationButtonType::Custom) {
+                DecorationButton *button = new DecorationButton(type, this);
+                window_settings *ws = factory()->windowSettings();
+                int width;
+                int height;
+                if (type == KDecoration2::DecorationButtonType::Menu || !ws->use_pixmap_buttons) {
+                    width = 16;
+                    height = ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
+                } else {
+                    GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(type) * S_COUNT];
+                    if (pixbuf) {
+                        width = gdk_pixbuf_get_width(pixbuf);
+                        height = gdk_pixbuf_get_height(pixbuf) + ws->button_offset;
+                    }
+                }
+                button->setGeometry(QRect(0, 0, width, height));
+                m_buttonGroup[group]->addButton(button);
+            }
             break;
         }
-        leftSpace = 0;
     }
-    return buttons;
-}
-
-QString Decoration::defaultButtonsLeft() const
-{
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
-    if (!ws->tobj_layout) {
-        return KDecorationOptions::defaultTitleButtonsLeft();
-    }
-    int leftSpace, rightSpace;
-    return parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
-}
-
-QString Decoration::defaultButtonsRight() const
-{
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
-    if (!ws->tobj_layout) {
-        return KDecorationOptions::defaultTitleButtonsRight();
-    }
-    char *p = ws->tobj_layout;
-    while (*p && *p++ != ':') { }
-    while (*p && *p++ != ':') { }
-    int leftSpace, rightSpace;
-    return parseButtonLayout(p, &leftSpace, &rightSpace);
-}
-
-static int titleBorderLeft(window_settings *ws)
-{
-    if (!ws->tobj_layout) {
-        return 2;
-    }
-    int leftSpace, rightSpace;
-    parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
-    return 2 + rightSpace;
-}
-
-static int titleBorderRight(window_settings *ws)
-{
-    if (!ws->tobj_layout) {
-        return 2;
-    }
-    char *p = ws->tobj_layout;
-    while (*p && *p++ != ':') { }
-    while (*p && *p++ != ':') { }
-    int leftSpace, rightSpace;
-    parseButtonLayout(p, &leftSpace, &rightSpace);
-    return 2 + leftSpace;
-}
-
-static int titleEdgeLeft(window_settings *ws)
-{
-    int edge = ws->left_space + ws->button_hoffset;
-
-    if (!ws->tobj_layout) {
-        return edge;
-    }
-    int leftSpace, rightSpace;
-    parseButtonLayout(ws->tobj_layout, &leftSpace, &rightSpace);
-    return edge + leftSpace;
-}
-
-static int titleEdgeRight(window_settings *ws)
-{
-    int edge = ws->right_space + ws->button_hoffset;
-
-    if (!ws->tobj_layout) {
-        return edge;
-    }
-    char *p = ws->tobj_layout;
-    while (*p && *p++ != ':') { }
-    while (*p && *p++ != ':') { }
-    int leftSpace, rightSpace;
-    parseButtonLayout(p, &leftSpace, &rightSpace);
-    return edge + rightSpace;
-}
-
-int Decoration::layoutMetric(LayoutMetric lm, bool respectWindowState, const KCommonDecorationButton *button) const
-{
-    window_settings *ws = (static_cast<DecorationFactory *>(factory()))->windowSettings();
-    bool border = !respectWindowState || !(maximizeMode() == MaximizeFull && !options()->moveResizeMaximizedWindows());
-
-    switch (lm) {
-    case LM_BorderLeft:
-        return border ? ws->left_space + ws->left_corner_space : 0;
-    case LM_BorderRight:
-        return border ? ws->right_space + ws->right_corner_space : 0;
-    case LM_BorderBottom:
-        return border ? ws->bottom_space + ws->bottom_corner_space : 0;
-    case LM_TitleBorderLeft:
-        return titleBorderLeft(ws);
-    case LM_TitleBorderRight:
-        return titleBorderRight(ws);
-    case LM_TitleEdgeLeft:
-        return border ? titleEdgeLeft(ws) : 0;
-    case LM_TitleEdgeRight:
-        return border ? titleEdgeRight(ws) : 0;
-    case LM_TitleEdgeTop:
-        return 0;
-    case LM_TitleEdgeBottom:
-        return 0;
-    case LM_TitleHeight:
-        return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
-    case LM_ButtonHeight:
-    case LM_ButtonWidth: {
-        if (button->type() == MenuButton || !ws->use_pixmap_buttons) {
-            if (lm == LM_ButtonWidth) {
-                return 16;
-            } else {
-                return ws->top_space + ws->normal_top_corner_space + ws->titlebar_height;
-            }
-        }
-        GdkPixbuf *pixbuf = ws->ButtonPix[buttonGlyph(button->type()) * S_COUNT];
-        if (pixbuf) {
-            if (lm == LM_ButtonWidth) {
-                return gdk_pixbuf_get_width(pixbuf);
-            } else {
-                return gdk_pixbuf_get_height(pixbuf) + ws->button_offset;
-            }
-        }
-        return 0;
-    }
-    case LM_ButtonSpacing:
-        return 0;
-    case LM_ExplicitButtonSpacer:
-        return 1;
-    case LM_ButtonMarginTop:
-        return 0;
-#if KDE_IS_VERSION(4,3,0)
-    case LM_OuterPaddingLeft:
-    case LM_OuterPaddingTop:
-    case LM_OuterPaddingRight:
-    case LM_OuterPaddingBottom:
-        return 32;
-#endif
-    }
-    return KCommonDecoration::layoutMetric(lm, respectWindowState, button);
-}
-
-KCommonDecoration::Position Decoration::mousePosition(const QPoint & point) const
-{
-#if KDE_IS_VERSION(4,3,0)
-    const int paddingLeft = layoutMetric(LM_OuterPaddingLeft);
-    const int paddingTop = layoutMetric(LM_OuterPaddingTop);
-#else
-    const int paddingLeft = 0;
-    const int paddingTop = 0;
-#endif
-    const int titleHeight = layoutMetric(LM_TitleHeight);
-    int pos = PositionCenter;
-
-    if (!isShade()) {
-        if (point.x() >= (width() + paddingLeft - qMax(titleHeight, layoutMetric(LM_BorderRight)))) {
-            pos |= PositionRight;
-        } else if (point.x() <= paddingLeft + qMax(titleHeight, layoutMetric(LM_BorderLeft))) {
-            pos |= PositionLeft;
-        }
-        if (point.y() >= (height() + paddingTop - qMax(titleHeight, layoutMetric(LM_BorderBottom)))) {
-            pos |= PositionBottom;
-        } else if (point.y() <= paddingTop + (pos == PositionCenter ? 3 : titleHeight)) {
-            pos |= PositionTop;
-        }
-    }
-    return Position(pos);
-}
-
-KCommonDecorationButton *Decoration::createButton(ButtonType type)
-{
-    return new DecorationButton(type, this);
-}
-
-void Decoration::init()
-{
-    KCommonDecoration::init();
-    widget()->setAutoFillBackground(false);
-    widget()->setAttribute(Qt::WA_NoSystemBackground, true);
-    widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
 }
 
 QImage DecorationFactory::buttonImage(const QSize &size, bool active, int button, int state) const
@@ -899,7 +706,6 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     if (hoverProgress >= 1.0 - 0.5 / 256) {
         return hoverImage;
     }
-#ifndef SMARAGD_NO_ANIMATIONS
     QImage result = image;
     QImage over = hoverImage;
     QColor alpha = Qt::black;
@@ -916,12 +722,63 @@ static QImage hoverImage(const QImage &image, const QImage &hoverImage, qreal ho
     p.drawImage(0, 0, over);
     p.end();
     return result;
-#else
-    // silence compiler
-    return image;
-#endif
 }
 
+void Decoration::paint(QPainter *painter, const QRect &repaintArea)
+{
+    painter->save();
+    painter->setClipRect(repaintArea, Qt::IntersectClip);
+
+    const bool horizontalBorders = !client().data()->isMaximizedHorizontally();
+    const bool verticalBorders = !client().data()->isMaximizedVertically();
+    const bool active = client().data()->isActive();
+    QSize decoSize = size();
+
+    QRect captionRect(m_buttonGroup[0]->geometry().right() + 2, 0, m_buttonGroup[2]->geometry().left() - m_buttonGroup[0]->geometry().right() - 4, borderTop());
+    QImage decoImage = factory()->decorationImage(size(), active, 0, captionRect);
+    window_settings *ws = factory()->windowSettings();
+    const Config *config = factory()->config();
+
+    painter->drawImage(0, 0, decoImage);
+
+    frame_settings *fs = active ? ws->fs_act : ws->fs_inact;
+
+    QColor shadowColor = QColor(0, 0, 0, 255);
+    QColor textColor = client().data()->color(active ? KDecoration2::ColorGroup::Active : KDecoration2::ColorGroup::Inactive, KDecoration2::ColorRole::Foreground);
+    int textHaloXOffset = 1;
+    int textHaloYOffset = 1;
+    int textHaloSize = 2;
+    if (!config->useKWinTextColors) {
+        alpha_color &c = fs->text_halo;
+        shadowColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
+        c = fs->text;
+        textColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
+    }
+    QString caption = settings()->fontMetrics().elidedText(client().data()->caption(), Qt::ElideMiddle, captionRect.width());
+    captionRect.setHeight(captionRect.height() & -2);
+    painter->setFont(settings()->font());
+    painter->setPen(shadowColor);
+//    painter->drawText(captionRect.adjusted(1, 1, 1, 1), Qt::AlignVCenter, caption);
+    painter->setPen(textColor);
+    Qt::Alignment alignment = Qt::AlignHCenter;
+    if (ws->tobj_layout) {
+        alignment = parseTitleAlignment(ws->tobj_layout);
+    }
+    painter->drawText(captionRect, alignment | Qt::AlignVCenter | Qt::TextSingleLine, caption);
+
+    m_buttonGroup[0]->paint(painter, repaintArea);
+    m_buttonGroup[2]->paint(painter, repaintArea);
+
+    foreach (QPointer<KDecoration2::DecorationButton> button, m_buttonGroup[0]->buttons()) {
+        static_cast<DecorationButton *>(button.data())->paintGlow(painter, repaintArea);
+    }
+    foreach (QPointer<KDecoration2::DecorationButton> button, m_buttonGroup[2]->buttons()) {
+        static_cast<DecorationButton *>(button.data())->paintGlow(painter, repaintArea);
+    }
+    painter->restore();
+}
+
+#if 0
 void Decoration::paintEvent(QPaintEvent */*event */)
 {
     DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(factory());
@@ -1017,75 +874,15 @@ void Decoration::paintEvent(QPaintEvent */*event */)
         textColor = QColor::fromRgbF(c.color.r, c.color.g, c.color.b, c.alpha);
     }
     QPixmap shadowText = Plasma::PaintUtils::shadowText(text, painter.font(), textColor, shadowColor, QPoint(0, 0), 2);
-    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
-
-    QList<DecorationButton *> buttons = widget()->findChildren<DecorationButton *>();
-    foreach (DecorationButton *button, buttons) {
-        QRect rect = button->geometry();
-        const qreal hoverProgress = button->hoverProgress();
-
-        int x = 0; //state
-        if (button->isDown()) {
-            x = 2;
-        }
-        if (!active) {
-            x += 3;
-        }
-
-        if (button->type() == MenuButton) {
-            icon().paint(&painter, rect);
-        } else {
-            int y = buttonGlyph(button->type());
-            if (ws->use_pixmap_buttons) {
-                QImage image = ws->ButtonPix[x + y * S_COUNT]->image;
-                if (!button->isDown()) {
-                    image = hoverImage(image, ws->ButtonPix[x + 1 + y * S_COUNT]->image, hoverProgress);
-                }
-                painter.drawImage(rect.x(), rect.y() + ws->button_offset, image);
-            } else {
-                int state = 0;
-                if (button->isDown()) state |= PRESSED_EVENT_WINDOW;
-                if (hoverProgress > 0.5) state |= IN_EVENT_WINDOW;
-                QImage buttonImage = static_cast<DecorationFactory *>(factory())->buttonImage(QSize(16, 16), active, y, state);
-
-                painter.drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
-            }
-        }
-    }
-    foreach (DecorationButton *button, buttons) {
-        const qreal hoverProgress = button->hoverProgress();
-
-        if (hoverProgress > 0.0 && button->type() != MenuButton) {
-            QRect rect = button->geometry();
-            int y = buttonGlyph(button->type());
-            QImage image;
-
-            if (active && ws->use_button_glow) {
-                image = ws->ButtonGlowPix[y]->image;
-            } else if (!active && ws->use_button_inactive_glow) {
-                image = ws->ButtonInactiveGlowPix[y]->image;
-            }
-            if (!image.isNull() && ws->use_pixmap_buttons) {
-                QImage buttonImage = ws->ButtonPix[y * S_COUNT]->image;
-                painter.setOpacity(hoverProgress);
-                const int xp = rect.x() + (buttonImage.width() - ws->c_glow_size.w) / 2;
-                const int yp = rect.y() + (buttonImage.height() - ws->c_glow_size.h) / 2;
-                painter.drawImage(xp, yp + ws->button_offset, image);
-            }
-        }
-    }
+//    widget()->style()->drawItemPixmap(&painter, labelRect.adjusted(-2, -2, 2, 2), alignment | Qt::AlignVCenter, shadowText);
 }
+#endif
 
-
-DecorationButton::DecorationButton(ButtonType type, KCommonDecoration *parent)
-    : KCommonDecorationButton(type, parent)
+DecorationButton::DecorationButton(KDecoration2::DecorationButtonType type, Decoration *parent)
+    : KDecoration2::DecorationButton(type, parent)
     , m_hoverProgress(0.0)
 {
-    setAttribute(Qt::WA_NoSystemBackground, true);
-    setAutoFillBackground(false);
-    setFocusPolicy(Qt::NoFocus);
-    setAttribute(Qt::WA_OpaquePaintEvent, false);
-    setAttribute(Qt::WA_Hover, true);
+    /* */
 }
 
 DecorationButton::~DecorationButton()
@@ -1093,26 +890,93 @@ DecorationButton::~DecorationButton()
     /* */
 }
 
-void DecorationButton::reset(unsigned long /*changed*/)
+void DecorationButton::paint(QPainter *painter, const QRect &repaintArea)
 {
-    /* NOTE: must be implemented, because it is declared pure */
+    Decoration *decoration = static_cast<Decoration *>(KDecoration2::DecorationButton::decoration().data());
+    KDecoration2::DecoratedClient *client = decoration->client().data();
+    DecorationFactory *decorationFactory =decoration->factory();
+    window_settings *ws = decorationFactory->windowSettings();
+    const bool active = client->isActive();
+    const bool down = isPressed();
+    QRect rect = geometry().toRect();
+
+    int state = 0;
+    if (down) {
+        state = 2;
+    }
+    if (!active) {
+        state += 3;
+    }
+
+    if (type() == KDecoration2::DecorationButtonType::Menu) {
+        client->icon().paint(painter, rect);
+    } else {
+        int glyph = decoration->buttonGlyph(type());
+        if (glyph == -1) {
+            return;
+        }
+        if (ws->use_pixmap_buttons) {
+            QImage image = ws->ButtonPix[state + glyph * S_COUNT]->image;
+            if (!down) {
+                image = hoverImage(image, ws->ButtonPix[state + 1 + glyph * S_COUNT]->image, m_hoverProgress);
+            }
+            painter->drawImage(rect.x(), rect.y() + ws->button_offset, image);
+        } else {
+            state = 0;
+            if (down) state |= PRESSED_EVENT_WINDOW;
+            if (isHovered()) state |= IN_EVENT_WINDOW;
+            QImage buttonImage = decorationFactory->buttonImage(QSize(16, 16), active, glyph, state);
+
+            painter->drawImage(rect.x(), rect.y() + ws->button_offset, buttonImage);
+        }
+    }
 }
 
-void DecorationButton::paintEvent(QPaintEvent */* event */)
+void DecorationButton::paintGlow(QPainter *painter, const QRect &repaintArea)
 {
-    /* */
+    if (m_hoverProgress > 0.0 && isVisible() && type() != KDecoration2::DecorationButtonType::Menu) {
+        Decoration *decoration = static_cast<Decoration *>(KDecoration2::DecorationButton::decoration().data());
+        KDecoration2::DecoratedClient *client = decoration->client().data();
+        DecorationFactory *decorationFactory =decoration->factory();
+        window_settings *ws = decorationFactory->windowSettings();
+        const bool active = client->isActive();
+
+        QRect rect = geometry().toRect();
+        int glyph = decoration->buttonGlyph(type());
+        if (glyph == -1) {
+            return;
+        }
+        QImage image;
+
+        if (active && ws->use_button_glow) {
+            image = ws->ButtonGlowPix[glyph]->image;
+        } else if (!active && ws->use_button_inactive_glow) {
+            image = ws->ButtonInactiveGlowPix[glyph]->image;
+        }
+        if (!image.isNull() && ws->use_pixmap_buttons) {
+            QImage buttonImage = ws->ButtonPix[glyph * S_COUNT]->image;
+            painter->setOpacity(m_hoverProgress);
+            const int xp = rect.x() + (buttonImage.width() - ws->c_glow_size.w) / 2;
+            const int yp = rect.y() + (buttonImage.height() - ws->c_glow_size.h) / 2;
+            painter->drawImage(xp, yp + ws->button_offset, image);
+        }
+    }
 }
 
-void DecorationButton::enterEvent(QEvent *event)
+void DecorationButton::hoverEnterEvent(QHoverEvent *event)
 {
-    KCommonDecorationButton::enterEvent(event);
-    startHoverAnimation(1.0);
+    KDecoration2::DecorationButton::hoverEnterEvent(event);
+    if (isHovered()) {
+        startHoverAnimation(1.0);
+    }
 }
 
-void DecorationButton::leaveEvent(QEvent *event)
+void DecorationButton::hoverLeaveEvent(QHoverEvent *event)
 {
-    KCommonDecorationButton::leaveEvent(event);
-    startHoverAnimation(0.0);
+    KDecoration2::DecorationButton::hoverLeaveEvent(event);
+    if (!isHovered()) {
+        startHoverAnimation(0.0);
+    }
 }
 
 qreal DecorationButton::hoverProgress() const
@@ -1124,14 +988,13 @@ void DecorationButton::setHoverProgress(qreal hoverProgress)
 {
     if (m_hoverProgress != hoverProgress) {
         m_hoverProgress = hoverProgress;
-        parentWidget()->update(geometry().adjusted(-32, -32, 32, 32));
+        update(geometry().adjusted(-32, -32, 32, 32));
     }
 }
 
 void DecorationButton::startHoverAnimation(qreal endValue)
 {
-#ifndef SMARAGD_NO_ANIMATIONS
-    DecorationFactory *decorationFactory = static_cast<DecorationFactory *>(decoration()->factory());
+    DecorationFactory *decorationFactory = static_cast<Decoration *>(decoration().data())->factory();
     const Config *config = decorationFactory->config();
     QPropertyAnimation *hoverAnimation = m_hoverAnimation.data();
 
@@ -1155,12 +1018,8 @@ void DecorationButton::startHoverAnimation(qreal endValue)
     hoverAnimation->setEndValue(endValue);
     hoverAnimation->setDuration(1 + qRound(config->hoverDuration * qAbs(m_hoverProgress - endValue)));
     hoverAnimation->start();
-#else
-    setHoverProgress(endValue);
-#endif
 }
 
 }; // namespace Smaragd
 
 #include "kwin_smaragd.moc"
-

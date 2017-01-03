@@ -22,18 +22,15 @@
 #ifndef KWIN_SMARAGD_H
 #define KWIN_SMARAGD_H 1
 
-#include <kcommondecoration.h>
-#include <kdecorationfactory.h>
+#include <KDecoration2/Decoration>
+#include <KDecoration2/DecorationButton>
+
+#include <QVariantList>
 
 #include "shadowengine.h"
 
-#if (QT_VERSION < QT_VERSION_CHECK(4, 6, 0))
-#define SMARAGD_NO_ANIMATIONS
-#endif
-
-#ifndef SMARAGD_NO_ANIMATIONS
+namespace KDecoration2 { class DecorationButtonGroup; }
 class QPropertyAnimation;
-#endif
 
 extern "C"
 {
@@ -54,27 +51,21 @@ public:
     QImage shadowImage;
 };
 
-class DecorationFactory : public KDecorationFactory
+class DecorationFactory
 {
 public:
     DecorationFactory();
-    virtual ~DecorationFactory();
-
-public:
-    virtual KDecoration *createDecoration(KDecorationBridge *bridge);
-    virtual bool reset(unsigned long changed);
-    virtual bool supports(Ability ability) const;
+    ~DecorationFactory();
 
 public:
     window_settings *windowSettings() const { return ws; }
     const Config *config() const { return &m_config; }
 
-    QRegion cornerShape(KCommonDecoration::WindowCorner corner) const;
+    QRegion cornerShape(int corner) const;
     QImage decorationImage(const QSize &size, bool active, int state, const QRect &titleRect = QRect()) const;
     QImage buttonImage(const QSize &size, bool active, int button, int state) const;
 
-private:
-    bool readConfig();
+    void setFontHeight(int fontHeight);
 
 private:
     window_settings *ws; // must be first entry because of inline method to access it
@@ -83,59 +74,58 @@ private:
     QRegion cornerRegion[4];
 };
 
-class Decoration : public KCommonDecoration
+class Decoration : public KDecoration2::Decoration
 {
     Q_OBJECT
 
 public:
-    Decoration(KDecorationBridge *bridge, KDecorationFactory *factory);
-    virtual ~Decoration();
+    explicit Decoration(QObject *parent = Q_NULLPTR, const QVariantList &args = QVariantList());
+    ~Decoration() Q_DECL_OVERRIDE;
 
 public:
-    virtual QString visibleName() const;
-    virtual QString defaultButtonsLeft() const;
-    virtual QString defaultButtonsRight() const;
-    virtual bool decorationBehaviour(DecorationBehaviour behaviour) const;
-    virtual int layoutMetric(LayoutMetric lm, bool respectWindowState = true, const KCommonDecorationButton *button = 0) const;
-    virtual Position mousePosition(const QPoint &point) const;
-    virtual QRegion cornerShape(WindowCorner corner);
+    DecorationFactory *factory() { return &m_factory; }
+    void init() Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
 
-    virtual void init();
-    virtual KCommonDecorationButton *createButton(ButtonType type);
+    void parseButtonLayout(char *p);
 
-    virtual void paintEvent(QPaintEvent *event);
+private Q_SLOTS:
+    void updateLayout();
 
 public:
-    int buttonGlyph(ButtonType type) const;
+    int buttonGlyph(KDecoration2::DecorationButtonType type) const;
+
+private:
+    DecorationFactory m_factory;
+    KDecoration2::DecorationButtonGroup *m_buttonGroup[3];
+    int m_titleLeft;
+    int m_titleRight;
 };
 
-class DecorationButton : public KCommonDecorationButton
+class DecorationButton : public KDecoration2::DecorationButton
 {
     Q_OBJECT
-#ifndef SMARAGD_NO_ANIMATIONS
     Q_PROPERTY(qreal hoverProgress READ hoverProgress WRITE setHoverProgress);
-#endif
 
 public:
-    DecorationButton(ButtonType type, KCommonDecoration *parent);
-    virtual ~DecorationButton();
-    virtual void reset(unsigned long changed);
+    DecorationButton(KDecoration2::DecorationButtonType type, Decoration *parent);
+    ~DecorationButton();
 
     qreal hoverProgress() const;
     void setHoverProgress(qreal hoverProgress);
 
+    void paintGlow(QPainter *painter, const QRect &repaintArea);
+
 protected:
-    virtual void paintEvent(QPaintEvent *event);
-    virtual void enterEvent(QEvent *event);
-    virtual void leaveEvent(QEvent *event);
+    void paint(QPainter *painter, const QRect &repaintArea) Q_DECL_OVERRIDE;
+    void hoverEnterEvent(QHoverEvent *event) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent(QHoverEvent *event) Q_DECL_OVERRIDE;
 
 private:
     void startHoverAnimation(qreal endValue);
 
 private:
-#ifndef SMARAGD_NO_ANIMATIONS
-    QWeakPointer<QPropertyAnimation> m_hoverAnimation;
-#endif
+    QPointer<QPropertyAnimation> m_hoverAnimation;
     qreal m_hoverProgress;
 };
 

@@ -22,7 +22,7 @@
 #ifndef SMARAGD_SHADOWENGINE_H
 #define SMARAGD_SHADOWENGINE_H 1
 
-#include <QtGui/QPainter>
+#include <QPainter>
 
 namespace Smaragd
 {
