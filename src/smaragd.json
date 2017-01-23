@@ -6,6 +6,7 @@
         "Description[es]": "Decoraciones de ventana Emerald para KWin", 
         "Description[gl]": "Decoracións de xanela esmeralda para KWin.", 
         "Description[nl]": "Vensterdecoraties Emerald voor KWin", 
+        "Description[pl]": "Ozdoby okienne emerald dla KWin", 
         "Description[pt]": "Decorações de janelas do Emerald para o KWin", 
         "Description[sk]": "Smaragdové dekorácie okien pre KWin", 
         "Description[sv]": "Smaragd fönsterdekorationer för KWin", 
@@ -13,6 +14,7 @@
         "Description[x-test]": "xxEmerald window decorations for KWinxx", 
         "Id": "org.kde.smaragd", 
         "Name": "Smaragd", 
+        "Name[pl]": "Szmaragd", 
         "Name[x-test]": "xxSmaragdxx", 
         "ServiceTypes": [
             "org.kde.kdecoration2"
