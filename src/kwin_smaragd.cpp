@@ -988,7 +988,9 @@ void DecorationButton::setHoverProgress(qreal hoverProgress)
 {
     if (m_hoverProgress != hoverProgress) {
         m_hoverProgress = hoverProgress;
-        update(geometry().adjusted(-32, -32, 32, 32));
+        if (static_cast<Decoration *>(decoration().data())) {
+            update(geometry().adjusted(-32, -32, 32, 32));
+        }
     }
 }
 
