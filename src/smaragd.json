@@ -1,6 +1,7 @@
 {
     "KPlugin": {
         "Description": "Emerald window decorations for KWin",
+        "Description[ast]": "Decoraciones Emerald de ventanes pa Kwin",
         "Description[ca@valencia]": "Decoració de les finestres Maragda per al KWin",
         "Description[ca]": "Decoració de les finestres Maragda per al KWin",
         "Description[cs]": "Dekorace oken Emerald pro KWin",
