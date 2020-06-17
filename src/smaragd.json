@@ -30,7 +30,6 @@
         "Description[sv]": "Smaragd fönsterdekorationer för KWin",
         "Description[tr]": "KWin için Emerald pencere süslemeleri",
         "Description[uk]": "Декорації вікон Emerald для KWin",
-        "Description[x-test]": "xxEmerald window decorations for KWinxx",
         "Description[zh_CN]": "KWin使用的Emerald主题窗口装饰",
         "Description[zh_TW]": "適用於 KWin 的綠寶石視窗裝飾",
         "Id": "org.kde.smaragd",
@@ -64,7 +63,6 @@
         "Name[sv]": "Smaragd",
         "Name[tr]": "Smaragd",
         "Name[uk]": "Smaragd",
-        "Name[x-test]": "xxSmaragdxx",
         "Name[zh_CN]": "Smaragd",
         "Name[zh_TW]": "Smaragd",
         "ServiceTypes": [
