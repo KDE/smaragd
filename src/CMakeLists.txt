@@ -35,9 +35,9 @@ add_library  (kwin_smaragd MODULE
     ${emerald_engines_SOURCES}
 )
 target_link_libraries (kwin_smaragd
-    Qt5::Core
-    Qt5::Gui
-    Qt5::Widgets
+    Qt::Core
+    Qt::Gui
+    Qt::Widgets
     KF5::ConfigCore
     KF5::CoreAddons
     KF5::I18n
