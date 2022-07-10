@@ -2,6 +2,7 @@
     "KPlugin": {
         "Description": "Emerald window decorations for KWin",
         "Description[ast]": "Decoraciones de ventana d'Emerald pa KWin",
+        "Description[bg]": "Декорации за прозорци Emerald за KWin",
         "Description[ca@valencia]": "Decoració de les finestres Maragda per a KWin",
         "Description[ca]": "Decoració de les finestres Maragda per al KWin",
         "Description[cs]": "Dekorace oken Emerald pro KWin",
@@ -38,6 +39,7 @@
         "Id": "org.kde.smaragd",
         "Name": "Smaragd",
         "Name[ast]": "Smaragd",
+        "Name[bg]": "Smaragd",
         "Name[ca@valencia]": "Smaragd",
         "Name[ca]": "Smaragd",
         "Name[cs]": "Smaragd",
