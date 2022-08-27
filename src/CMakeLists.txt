@@ -45,6 +45,7 @@ target_link_libraries (kwin_smaragd
     KDecoration2::KDecoration
     ${CAIRO_LIBRARIES}
     ${GLIB2_LIBRARIES}
+    ${Intl_LIBRARIES}
 )
 
 install (TARGETS kwin_smaragd DESTINATION ${PLUGIN_INSTALL_DIR}/org.kde.kdecoration2)

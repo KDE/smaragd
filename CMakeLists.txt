@@ -15,6 +15,7 @@ find_package (KF5 REQUIRED COMPONENTS Config CoreAddons I18n WidgetsAddons)
 find_package (KDecoration2 REQUIRED)
 find_package (GLIB2 REQUIRED)
 find_package (Cairo REQUIRED)
+find_package (Intl REQUIRED)
 
 include (KDEInstallDirs)
 include (KDECMakeSettings)
