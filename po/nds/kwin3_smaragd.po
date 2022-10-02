@@ -1,0 +1,109 @@
+# translation of kwin3_smaragd.po to Low Saxon
+# Copyright (C) YEAR This_file_is_part_of_KDE
+# This file is distributed under the same license as the PACKAGE package.
+# Manfred Wiese <m.j.wiese@web.de>, 2010, 2011.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kwin3_smaragd\n"
+"Report-Msgid-Bugs-To: https://bugs.kde.org\n"
+"POT-Creation-Date: 2019-05-20 03:18+0200\n"
+"PO-Revision-Date: 2011-01-25 06:52+0100\n"
+"Last-Translator: Manfred Wiese <m.j.wiese@web.de>\n"
+"Language-Team: Low Saxon <kde-i18n-nds@kde.org>\n"
+"Language: nds\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Lokalize 1.0\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+#. i18n: ectx: attribute (title), widget (QWidget, tab)
+#: config/kwin_smaragd_dialog.ui:21
+#, kde-format
+msgid "General"
+msgstr "Allgemeen"
+
+#. i18n: ectx: property (text), widget (QLabel, label_9)
+#: config/kwin_smaragd_dialog.ui:30
+#, kde-format
+msgid "Hover animation duration:"
+msgstr "Animeerduer bi't Anrögen:"
+
+#. i18n: ectx: property (suffix), widget (QSpinBox, cm_HoverDuration)
+#: config/kwin_smaragd_dialog.ui:37
+#, kde-format
+msgid " ms"
+msgstr " ms"
+
+#. i18n: ectx: property (text), widget (QCheckBox, cm_UseKWinTextColors)
+#: config/kwin_smaragd_dialog.ui:53
+#, kde-format
+msgid "Use KWin colors for title text"
+msgstr "KWin-Klören för Titeltext bruken"
+
+#. i18n: ectx: property (text), widget (QCheckBox, cm_UseKWinShadows)
+#: config/kwin_smaragd_dialog.ui:60
+#, kde-format
+msgid "Use KWin shadow effect settings"
+msgstr "KWin-Schaddeneffektinstellen bruken"
+
+#. i18n: ectx: attribute (title), widget (QWidget, tab_2)
+#: config/kwin_smaragd_dialog.ui:68
+#, kde-format
+msgid "Shadows"
+msgstr "Schaddens"
+
+#. i18n: ectx: property (text), widget (QLabel, label)
+#: config/kwin_smaragd_dialog.ui:78
+#, kde-format
+msgid "Color:"
+msgstr "Klöör:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_3)
+#: config/kwin_smaragd_dialog.ui:103
+#, kde-format
+msgid "Radius:"
+msgstr "Halfmaat:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_4)
+#: config/kwin_smaragd_dialog.ui:117
+#, kde-format
+msgid "Offset X:"
+msgstr "X-Verschuven:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_6)
+#: config/kwin_smaragd_dialog.ui:131
+#, kde-format
+msgid "Linear Decay:"
+msgstr "Lineaar Minnern:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_2)
+#: config/kwin_smaragd_dialog.ui:152
+#, kde-format
+msgid "Intensity:"
+msgstr "Stärk:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_8)
+#: config/kwin_smaragd_dialog.ui:169
+#, kde-format
+msgid "Size:"
+msgstr "Grött:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_5)
+#: config/kwin_smaragd_dialog.ui:186
+#, kde-format
+msgid "Offset Y:"
+msgstr "Y-Verschuven:"
+
+#. i18n: ectx: property (text), widget (QLabel, label_7)
+#: config/kwin_smaragd_dialog.ui:200
+#, kde-format
+msgid "Exponential:"
+msgstr "Exponentschell:"
+
+#~ msgid "Animations require KDE SC 4.4"
+#~ msgstr "Animeren bruukt KDE SC 4.4"
+
+#~ msgid "Smaragd"
+#~ msgstr "Smaragd"
