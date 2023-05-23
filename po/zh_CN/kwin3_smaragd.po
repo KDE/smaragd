@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: kdeorg\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2019-05-20 03:18+0200\n"
-"PO-Revision-Date: 2023-04-29 08:34\n"
+"PO-Revision-Date: 2023-05-22 14:01\n"
 "Last-Translator: \n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
@@ -27,7 +27,7 @@ msgstr "常规"
 #: config/kwin_smaragd_dialog.ui:30
 #, kde-format
 msgid "Hover animation duration:"
-msgstr "悬停动画持续时间:"
+msgstr "悬停动效持续时间："
 
 #. i18n: ectx: property (suffix), widget (QSpinBox, cm_HoverDuration)
 #: config/kwin_smaragd_dialog.ui:37
@@ -75,13 +75,13 @@ msgstr "X 偏移："
 #: config/kwin_smaragd_dialog.ui:131
 #, kde-format
 msgid "Linear Decay:"
-msgstr "线性衰减:"
+msgstr "线性衰减："
 
 #. i18n: ectx: property (text), widget (QLabel, label_2)
 #: config/kwin_smaragd_dialog.ui:152
 #, kde-format
 msgid "Intensity:"
-msgstr "强度："
+msgstr "亮度："
 
 #. i18n: ectx: property (text), widget (QLabel, label_8)
 #: config/kwin_smaragd_dialog.ui:169
@@ -99,4 +99,4 @@ msgstr "Y 偏移："
 #: config/kwin_smaragd_dialog.ui:200
 #, kde-format
 msgid "Exponential:"
-msgstr "指数分布:"
+msgstr "指数分布："
