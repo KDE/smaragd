@@ -40,7 +40,7 @@ msgstr " ms"
 #: config/kwin_smaragd_dialog.ui:53
 #, kde-format
 msgid "Use KWin colors for title text"
-msgstr "Empregar as cores de KWin para o texto de títulos"
+msgstr "Usar as cores de KWin para o texto de títulos"
 
 #. i18n: ectx: property (text), widget (QCheckBox, cm_UseKWinShadows)
 #: config/kwin_smaragd_dialog.ui:60
