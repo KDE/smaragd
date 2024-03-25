@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: smaragd\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2023-11-05 12:36+0000\n"
-"PO-Revision-Date: 2024-02-26 21:30+0100\n"
+"PO-Revision-Date: 2024-03-24 10:34+0100\n"
 "Last-Translator: Oliver Kellogg <okellogg@users.sourceforge.net>\n"
 "Language-Team: Esperanto <kde-i18n-eo.org>\n"
 "Language: eo\n"
@@ -28,7 +28,7 @@ msgstr "Ĝenerala"
 #: config/kwin_smaragd_dialog.ui:30
 #, kde-format
 msgid "Hover animation duration:"
-msgstr ""
+msgstr "Ŝvebi animacio-daŭro:"
 
 #. i18n: ectx: property (suffix), widget (QSpinBox, cm_HoverDuration)
 #: config/kwin_smaragd_dialog.ui:37
@@ -40,13 +40,13 @@ msgstr " ms"
 #: config/kwin_smaragd_dialog.ui:53
 #, kde-format
 msgid "Use KWin colors for title text"
-msgstr ""
+msgstr "Uzu KWin-kolorojn por titolteksto"
 
 #. i18n: ectx: property (text), widget (QCheckBox, cm_UseKWinShadows)
 #: config/kwin_smaragd_dialog.ui:60
 #, kde-format
 msgid "Use KWin shadow effect settings"
-msgstr ""
+msgstr "Uzu agordojn de KWin ombro-efekto"
 
 #. i18n: ectx: attribute (title), widget (QWidget, tab_2)
 #: config/kwin_smaragd_dialog.ui:68
@@ -76,7 +76,7 @@ msgstr "Deŝovo X:"
 #: config/kwin_smaragd_dialog.ui:131
 #, kde-format
 msgid "Linear Decay:"
-msgstr ""
+msgstr "Lineara Kadukiĝo:"
 
 #. i18n: ectx: property (text), widget (QLabel, label_2)
 #: config/kwin_smaragd_dialog.ui:152
@@ -100,4 +100,4 @@ msgstr "Deŝovo Y:"
 #: config/kwin_smaragd_dialog.ui:200
 #, kde-format
 msgid "Exponential:"
-msgstr ""
+msgstr "Eksponenta:"
